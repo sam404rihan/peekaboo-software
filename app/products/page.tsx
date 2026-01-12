@@ -96,7 +96,8 @@ export default function ProductsListPage() {
     return products.filter((p) => (p.sku ?? "").toLowerCase().includes(term));
   }, [products, skuQuery]);
 
-  const columnCount = role === "admin" ? 9 : 7;
+  // Updated column count (Admin: 10, User: 8)
+  const columnCount = role === "admin" ? 10 : 8;
 
   return (
     <div className="flex h-screen w-full bg-gray-50">
@@ -148,7 +149,10 @@ export default function ProductsListPage() {
                     <th className="px-6 py-3 text-left font-semibold text-gray-600">SKU</th>
                     <th className="px-6 py-3 text-left font-semibold text-gray-600">Category</th>
                     <th className="px-6 py-3 text-left font-semibold text-gray-600">HSN Code</th>
-                    <th className="px-6 py-3 text-left font-semibold text-gray-600">Price</th>
+                    {/* Renamed Header */}
+                    <th className="px-6 py-3 text-left font-semibold text-gray-600">Selling Price</th>
+                    {/* New Header */}
+                    <th className="px-6 py-3 text-left font-semibold text-gray-600">MRP</th>
                     <th className="px-6 py-3 text-left font-semibold text-gray-600">GST %</th>
                     <th className="px-6 py-3 text-left font-semibold text-gray-600">Stock</th>
                     {role === "admin" && (
@@ -185,7 +189,12 @@ export default function ProductsListPage() {
                           )}
                         </td>
                         <td className="px-6 py-3 text-gray-700">{p.hsnCode || "-"}</td>
+                        {/* Selling Price */}
                         <td className="px-6 py-3 text-gray-700">₹{p.unitPrice.toFixed(2)}</td>
+                        {/* New MRP Column */}
+                        <td className="px-6 py-3 text-gray-500">
+                          {p.mrp ? `₹${p.mrp.toFixed(2)}` : "-"}
+                        </td>
                         <td className="px-6 py-3 text-gray-700">{p.taxRatePct ?? 0}</td>
                         <td className="px-6 py-3 text-gray-700">{p.stock}</td>
                         {role === "admin" && <td className="px-6 py-3 text-gray-700">{p.printedCount ?? 0}</td>}
