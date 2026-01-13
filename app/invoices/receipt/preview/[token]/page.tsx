@@ -28,7 +28,6 @@ export default function ReceiptPreviewPage() {
   const [finalizing, setFinalizing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Load settings
   useEffect(() => {
     (async () => {
       try {
@@ -38,7 +37,6 @@ export default function ReceiptPreviewPage() {
     })();
   }, []);
 
-  // Load pending payload from sessionStorage
   useEffect(() => {
     try {
       const raw = sessionStorage.getItem(`checkout.pending.${token}`);
@@ -49,13 +47,12 @@ export default function ReceiptPreviewPage() {
     }
   }, [token]);
 
-  // After print finalize
   useEffect(() => {
     if (!payload) return;
     const shouldConfirm = search?.get('confirm') === '1' || search?.get('confirm') === 'true';
     const autoClose = search?.get('autoclose') === '1' || search?.get('autoclose') === 'true';
     const onAfterPrint = async () => {
-      if (shouldConfirm) return; // when confirm overlay is present, we print from a button which triggers finalize explicitly
+      if (shouldConfirm) return;
       await doFinalize();
       if (autoClose) try { window.close(); } catch { }
     };
@@ -71,11 +68,9 @@ export default function ReceiptPreviewPage() {
     setError(null);
     try {
       const newId = await checkoutCart(payload);
-      // notify opener
       try {
         window.opener?.postMessage({ type: 'checkout-finalized', token: payload.opId, invoiceId: newId }, window.location.origin);
       } catch { }
-      // cleanup storage
       try { sessionStorage.removeItem(`checkout.pending.${payload.opId}`); } catch { }
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
@@ -86,25 +81,35 @@ export default function ReceiptPreviewPage() {
     setFinalizing(false);
   }
 
-  if (!payload) return <div className="p-4 text-sm">{error || 'Preparing…'}</div>;
+  const summary = useMemo(() => {
+    if (!payload) return { gross: 0, lineDisc: 0, base: 0, gst: 0, grand: 0 };
+    let gross = 0, lineDisc = 0, baseTotal = 0, gstTotal = 0;
 
-  // Build display sums identical to invoice page
-  const sums = useMemo(() => {
-    let base = 0, gst = 0, lineDisc = 0;
     for (const it of payload.lines) {
-      const { base: b, gst: g } = splitInclusive(Number(it.unitPrice || 0), Number(it.taxRatePct || 0));
-      base += b * Number(it.qty || 0);
-      gst += g * Number(it.qty || 0);
-      lineDisc += Number(it.lineDiscount || 0);
+      const g = (it.unitPrice || 0) * (it.qty || 0);
+      const d = Number(it.lineDiscount || 0);
+      gross += g;
+      lineDisc += d;
+
+      const { base, gst } = splitInclusive(Number(it.unitPrice || 0), Number(it.taxRatePct || 0));
+      baseTotal += base * Number(it.qty || 0);
+      gstTotal += gst * Number(it.qty || 0);
     }
-    return { base: round2(base), gst: round2(gst), lineDisc: round2(lineDisc) };
+
+    const sub = gross - lineDisc;
+    const bill = Number(payload.billDiscount || 0);
+    const grand = Math.max(0, sub - bill);
+
+    return {
+      gross: round2(gross),
+      lineDisc: round2(lineDisc),
+      base: round2(baseTotal),
+      gst: round2(gstTotal),
+      grand: round2(grand)
+    };
   }, [payload]);
 
-  const grandTotal = useMemo(() => {
-    const sub = payload.lines.reduce((s, l) => s + (l.unitPrice * l.qty - (l.lineDiscount || 0)), 0);
-    const bill = Number(payload.billDiscount || 0);
-    return Math.max(0, sub - bill);
-  }, [payload]);
+  if (!payload) return <div className="p-4 text-sm">{error || 'Preparing…'}</div>;
 
   const bizName = settings?.businessName || "Your Store Name";
   const addrParts = [
@@ -161,58 +166,108 @@ export default function ReceiptPreviewPage() {
         autoPrint={!shouldConfirm}
         termsConditions={terms}
       >
-        <div className="bill-info">
+        <div className="bill-info mb-2 text-xs">
           <div className="flex items-center justify-between">
-            <span>No:</span>
-            <span>Pending</span>
+            <span className="font-semibold">Invoice No:</span>
+            <span className="font-mono">PENDING</span>
           </div>
           <div className="flex items-center justify-between">
-            <span>Date:</span>
+            <span className="font-semibold">Date:</span>
             <span>{new Date().toLocaleString()}</span>
           </div>
         </div>
-        <div className="separator" />
-        <table className="items">
-          <thead>
-            <tr>
-              <th className="text-left">Item</th>
-              <th className="text-right">Qty</th>
-              <th className="text-right">Amt</th>
-            </tr>
-          </thead>
-          <tbody>
-            {payload.lines.map((it, idx) => {
-              const net = it.unitPrice * it.qty - (it.lineDiscount || 0);
-              return (
-                <tr key={idx}>
-                  <td>{it.name}</td>
-                  <td className="text-right">{it.qty}</td>
-                  <td className="text-right">₹{net.toFixed(2)}</td>
-                </tr>
-              );
-            })}
-          </tbody>
-          <tfoot>
-            <tr>
-              <td colSpan={2}>Base (ex-tax)</td>
-              <td className="text-right">₹{sums.base.toFixed(2)}</td>
-            </tr>
-            {showTax ? (
-              <tr>
-                <td colSpan={2}>GST</td>
-                <td className="text-right">₹{sums.gst.toFixed(2)}</td>
-              </tr>
-            ) : null}
-            <tr>
-              <td colSpan={2}>Discounts</td>
-              <td className="text-right">₹{(sums.lineDisc + (payload.billDiscount ?? 0)).toFixed(2)}</td>
-            </tr>
-            <tr className="total">
-              <td colSpan={2}>Total</td>
-              <td className="text-right">₹{grandTotal.toFixed(2)}</td>
-            </tr>
-          </tfoot>
-        </table>
+
+        <div className="border-b-2 border-dashed border-gray-400 my-2" />
+
+        <div className="flex justify-between text-xs font-bold uppercase mb-2">
+          <span>Item Description</span>
+          <span>Amount</span>
+        </div>
+
+        {/* --- Items List --- */}
+        <div className="flex flex-col gap-3">
+          {payload.lines.map((it, idx) => {
+            const qty = it.qty || 0;
+            const unit = it.unitPrice || 0;
+            const grossLine = unit * qty;
+            const disc = Number(it.lineDiscount || 0);
+            const net = grossLine - disc;
+            const hasDisc = disc > 0;
+
+            return (
+              <div key={idx} className="flex flex-col">
+                {/* Name */}
+                <div className="font-bold text-sm leading-tight mb-0.5">
+                  {it.name}
+                </div>
+                {/* Details */}
+                <div className="flex justify-between text-xs text-gray-700">
+                  <span>{qty} x {unit.toFixed(2)}</span>
+                  <span>{grossLine.toFixed(2)}</span>
+                </div>
+                {/* Discount */}
+                {hasDisc && (
+                  <div className="flex justify-between text-xs text-gray-500 italic">
+                    <span>Item Disc.</span>
+                    <span>- {disc.toFixed(2)}</span>
+                  </div>
+                )}
+                {/* Final Net */}
+                <div className="flex justify-between items-end mt-0.5">
+                  <span className="text-[10px] text-gray-400">
+                    {it.taxRatePct ? `(GST ${it.taxRatePct}%)` : ''}
+                  </span>
+                  <span className="font-bold text-sm">
+                    {net.toFixed(2)}
+                  </span>
+                </div>
+                <div className="border-b border-dashed border-gray-300 mt-2" />
+              </div>
+            );
+          })}
+        </div>
+
+        {/* --- Footer Sums --- */}
+        <div className="mt-2 text-xs flex flex-col gap-1">
+          <div className="flex justify-between text-gray-600">
+            <span>Subtotal (MRP)</span>
+            <span>{summary.gross.toFixed(2)}</span>
+          </div>
+
+          {summary.lineDisc > 0 && (
+            <div className="flex justify-between text-gray-600">
+              <span>Total Item Disc.</span>
+              <span>- {summary.lineDisc.toFixed(2)}</span>
+            </div>
+          )}
+
+          <div className="flex justify-between text-[10px] text-gray-400 mt-1">
+            <span>Ex-Tax Value</span>
+            <span>{summary.base.toFixed(2)}</span>
+          </div>
+          {showTax && (
+            <div className="flex justify-between text-[10px] text-gray-400">
+              <span>Total GST</span>
+              <span>{summary.gst.toFixed(2)}</span>
+            </div>
+          )}
+
+          {payload.billDiscount && payload.billDiscount > 0 ? (
+            <div className="flex justify-between text-gray-600 mt-1">
+              <span>Bill Discount</span>
+              <span>- {payload.billDiscount.toFixed(2)}</span>
+            </div>
+          ) : null}
+
+          <div className="border-b-2 border-black my-1" />
+
+          <div className="flex justify-between text-base font-extrabold uppercase">
+            <span>Grand Total</span>
+            <span>₹{summary.grand.toFixed(2)}</span>
+          </div>
+          <div className="border-b-2 border-black mb-1" />
+        </div>
+
         {error ? <div className="text-xs text-red-600 mt-2 text-center">{error}</div> : null}
       </Receipt>
     </div>
