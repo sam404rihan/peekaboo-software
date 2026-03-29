@@ -12,7 +12,9 @@ export type CheckoutInput = {
   paymentReferenceId?: string;
   cashierUserId?: string;
   customerId?: string;
+  customerName?: string;
   cashierName?: string;
+  notes?: string;
   // Optional idempotency key to prevent duplicate invoices on retries
   opId?: string;
 };
@@ -152,6 +154,7 @@ export async function checkoutCart(input: CheckoutInput): Promise<string> {
       issuedAt: nowIso,
       createdAt: nowIso,
       updatedAt: nowIso,
+      notes: input.notes,
     };
 
     // No-op: payments already validated above
@@ -160,6 +163,7 @@ export async function checkoutCart(input: CheckoutInput): Promise<string> {
     tx.set(invRef, {
       ...inv,
       ...(input.customerId ? { customerId: input.customerId } : {}),
+      ...(input.customerName ? { customerName: input.customerName } : {}),
       // Idempotency: allow external callers to set opId to avoid duplicates on replay
       ...(typeof (input as any).opId === 'string' ? { opId: (input as any).opId } : {}),
       createdAt: serverTimestamp(),

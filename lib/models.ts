@@ -57,6 +57,7 @@ export interface InvoiceLineItem {
 export interface InvoiceDoc extends BaseDoc {
   invoiceNumber: string; // sequential human-readable
   customerId?: string;
+  customerName?: string; // denormalized for search and display
   items: InvoiceLineItem[];
   subtotal: number;
   taxTotal: number;
@@ -73,6 +74,7 @@ export interface InvoiceDoc extends BaseDoc {
   // Exchange metadata (optional)
   exchangeOfInvoiceId?: string; // original invoice id if this invoice was created for an exchange
   exchangeId?: string; // link to Exchanges doc
+  notes?: string;
 }
 
 export interface OfferDoc extends BaseDoc {

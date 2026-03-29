@@ -28,7 +28,8 @@ export function toInvoiceDoc(id: string, data: Record<string, unknown>): Invoice
     id,
     invoiceNumber: asString(data.invoiceNumber, id),
     customerId: typeof data.customerId === "string" ? data.customerId : undefined,
-  items: asArrayOfRecords(data.items) ? data.items.map((it) => ({
+    customerName: typeof data.customerName === "string" ? data.customerName : undefined,
+    items: asArrayOfRecords(data.items) ? data.items.map((it) => ({
       productId: asString(it.productId),
       name: asString(it.name),
       quantity: asNumber(it.quantity, 0),
@@ -51,6 +52,7 @@ export function toInvoiceDoc(id: string, data: Record<string, unknown>): Invoice
     updatedAt: asString(data.updatedAt, now),
     exchangeOfInvoiceId: typeof data.exchangeOfInvoiceId === 'string' ? data.exchangeOfInvoiceId : undefined,
     exchangeId: typeof data.exchangeId === 'string' ? data.exchangeId : undefined,
+    notes: typeof data.notes === "string" ? data.notes : undefined,
   };
 }
 

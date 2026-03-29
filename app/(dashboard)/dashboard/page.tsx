@@ -363,7 +363,7 @@ export default function DashboardPage() {
                          <td className="px-5 py-4 font-black text-[13px] text-slate-800">
                             <Link href={`/invoices/${inv.id}`} className="hover:text-[#b7102a]">{inv.invoiceNumber}</Link>
                          </td>
-                         <td className="px-5 py-4 font-bold text-sm text-slate-600 truncate max-w-[120px]">{(inv as any).customerName || "Walk-In"}</td>
+                         <td className="px-5 py-4 font-bold text-sm text-slate-600 truncate max-w-[120px]">{inv.customerName || "Walk-In"}</td>
                          <td className="px-5 py-4 font-extrabold text-sm text-right tabular-nums text-slate-800">₹{inv.grandTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
                          <td className="px-5 py-4 text-xs font-bold flex items-center gap-1.5">
                             {inv.status === "paid" && <span className="text-[#059669] flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full bg-[#059669] mt-3"></div> Completed</span>}

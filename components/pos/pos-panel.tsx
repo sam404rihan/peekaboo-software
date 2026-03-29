@@ -209,12 +209,12 @@ export function PosPanel() {
       }
       if (!navigator.onLine) {
         const id = `op-${Date.now()}`;
-        const payload = { lines: cart.map(l => ({ productId: l.product.id!, name: l.product.name, qty: l.qty, unitPrice: l.product.unitPrice, lineDiscount: lineDiscount(l), taxRatePct: l.product.taxRatePct })), billDiscount: billDiscComputed, paymentMethod, paymentReferenceId: paymentReferenceId.trim() || undefined, cashierUserId: user?.uid, cashierName: user?.email, customerId, opId: id };
+        const payload = { lines: cart.map(l => ({ productId: l.product.id!, name: l.product.name, qty: l.qty, unitPrice: l.product.unitPrice, lineDiscount: lineDiscount(l), taxRatePct: l.product.taxRatePct })), billDiscount: billDiscComputed, paymentMethod, paymentReferenceId: paymentReferenceId.trim() || undefined, cashierUserId: user?.uid, cashierName: user?.email, customerId, customerName: custName.trim() || undefined, opId: id };
         await (await import("@/lib/offline")).enqueueOp({ id, type: 'checkout', payload, createdAt: new Date().toISOString(), attempts: 0 });
       } else {
         const newInvoiceId = await checkoutCart({
           lines: cart.map(l => ({ productId: l.product.id!, name: l.product.name, qty: l.qty, unitPrice: l.product.unitPrice, lineDiscount: lineDiscount(l), taxRatePct: l.product.taxRatePct }) as any),
-          billDiscount: billDiscComputed, paymentMethod, paymentReferenceId: paymentReferenceId.trim() || undefined, cashierUserId: user?.uid, cashierName: user?.email ?? undefined, customerId, opId: `op-${Date.now()}`,
+          billDiscount: billDiscComputed, paymentMethod, paymentReferenceId: paymentReferenceId.trim() || undefined, cashierUserId: user?.uid, cashierName: user?.email ?? undefined, customerId, customerName: custName.trim() || undefined, opId: `op-${Date.now()}`,
         });
         try { window.open(`/invoices/receipt/${newInvoiceId}?autoclose=1&confirm=1`, '_blank'); } catch { }
       }
