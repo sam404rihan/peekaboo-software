@@ -1,6 +1,5 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
-import { Card } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { observeInvoices, type InvoiceFilters } from "@/lib/invoices";
@@ -15,14 +14,12 @@ export function RecentInvoices() {
   const filters: InvoiceFilters | undefined = useMemo(() => {
     if (!user) return undefined;
     if (role === "cashier") return { cashierUserId: user.uid };
-    // Admin: limit to last 20 by date without extra filters
     return {};
   }, [user, role]);
 
   useEffect(() => {
     if (!user) return;
     const unsub = observeInvoices((list) => {
-      // Sort desc by issuedAt and take top 20 for display
       const sorted = [...list].sort((a, b) => (a.issuedAt < b.issuedAt ? 1 : -1)).slice(0, 20);
       setInvoices(sorted);
     }, filters);
@@ -30,14 +27,17 @@ export function RecentInvoices() {
   }, [user, filters]);
 
   return (
-    <Card className="p-0">
-      <div className="px-6 pt-6 pb-2 flex items-center justify-between">
-        <h2 className="text-base font-semibold">Recent Invoices</h2>
-        <div className="flex gap-2">
-          <Link href="/invoices" className="h-9 px-4 rounded-md border text-sm font-medium flex items-center hover:bg-muted">View all</Link>
-        </div>
+    <div className="bg-white border border-zinc-200/60 rounded-xl shadow-sm overflow-hidden">
+      <div className="px-6 pt-5 pb-3 flex items-center justify-between">
+        <h2 className="text-base font-display font-semibold text-zinc-800">Recent Invoices</h2>
+        <Link
+          href="/invoices"
+          className="h-8 px-3.5 rounded-lg border border-zinc-200 text-xs font-medium text-zinc-600 flex items-center hover:bg-zinc-50 transition-colors"
+        >
+          View all
+        </Link>
       </div>
-      <div className="px-6 pb-4">
+      <div className="px-2 pb-2">
         <Table>
           <TableHeader>
             <TableRow>
@@ -51,12 +51,12 @@ export function RecentInvoices() {
           <TableBody>
             {invoices.map((inv) => (
               <TableRow key={inv.id}>
-                <TableCell className="whitespace-nowrap text-muted-foreground text-xs">{new Date(inv.issuedAt).toLocaleString()}</TableCell>
+                <TableCell className="whitespace-nowrap text-zinc-500 text-xs">{new Date(inv.issuedAt).toLocaleString()}</TableCell>
                 <TableCell className="font-medium">
-                  <Link href={`/invoices/${inv.id}`} className="hover:underline">{inv.invoiceNumber || inv.id}</Link>
+                  <Link href={`/invoices/${inv.id}`} className="hover:text-primary transition-colors">{inv.invoiceNumber || inv.id}</Link>
                 </TableCell>
-                <TableCell className="text-sm">{inv.cashierName || inv.cashierUserId}</TableCell>
-                <TableCell className="text-right">₹{inv.grandTotal.toFixed(2)}</TableCell>
+                <TableCell className="text-sm text-zinc-600">{inv.cashierName || inv.cashierUserId}</TableCell>
+                <TableCell className="text-right font-semibold">₹{inv.grandTotal.toFixed(2)}</TableCell>
                 <TableCell className="text-right">
                   {inv.status === "paid" ? (
                     <Badge variant="success">Paid</Badge>
@@ -72,12 +72,12 @@ export function RecentInvoices() {
             ))}
             {invoices.length === 0 && (
               <TableRow>
-                <TableCell colSpan={5} className="text-center text-sm text-muted-foreground py-6">No invoices yet.</TableCell>
+                <TableCell colSpan={5} className="text-center text-sm text-zinc-400 py-8">No invoices yet.</TableCell>
               </TableRow>
             )}
           </TableBody>
         </Table>
       </div>
-    </Card>
+    </div>
   );
 }

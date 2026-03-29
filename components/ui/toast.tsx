@@ -44,10 +44,10 @@ export const Toaster: React.FC<{ toasts: ToastItem[]; onDismiss: (id: number) =>
         const color = t.variant === 'destructive' ? 'bg-red-600 text-white'
           : t.variant === 'success' ? 'bg-green-600 text-white'
             : t.variant === 'warning' ? 'bg-amber-500 text-black'
-              : t.variant === 'info' ? 'bg-blue-600 text-white'
+              : t.variant === 'info' ? 'bg-primary text-white'
                 : 'bg-foreground text-background';
         return (
-          <div key={t.id} className={`rounded-md shadow px-3 py-2 ${color}`}>
+          <div key={t.id} className={`rounded-xl shadow px-3 py-2 ${color}`}>
             {t.title && <div className="text-sm font-semibold">{t.title}</div>}
             {t.description && <div className="text-xs opacity-90">{t.description}</div>}
             <button className="absolute right-2 top-2 text-xs opacity-80 hover:opacity-100" onClick={() => onDismiss(t.id)}>×</button>

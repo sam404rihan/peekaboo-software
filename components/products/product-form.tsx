@@ -1,11 +1,10 @@
 "use client";
 import { useEffect, useState } from "react";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
 import { createProduct, updateProduct, UpsertProductInput } from "@/lib/products";
 import { listCategories } from "@/lib/categories";
 import type { CategoryDoc } from "@/lib/models";
 import { useToast } from "@/components/ui/toast";
+import { cn } from "@/lib/utils";
 
 export interface ProductFormProps {
   mode: "create" | "edit";
@@ -13,18 +12,22 @@ export interface ProductFormProps {
   onSaved?: (id?: string) => void;
 }
 
+function MSIcon({ name, className }: { name: string; className?: string }) {
+  return <span className={cn("material-symbols-outlined", className)}>{name}</span>;
+}
+
 export function ProductForm({ mode, initial, onSaved }: ProductFormProps) {
   const [form, setForm] = useState<UpsertProductInput>({
     name: initial?.name ?? "",
     sku: initial?.sku ?? "",
     unitPrice: initial?.unitPrice ?? 0,
-    mrp: initial?.mrp, // Initialize MRP
+    mrp: initial?.mrp,
     stock: initial?.stock ?? 0,
     active: initial?.active ?? true,
     category: initial?.category,
     hsnCode: initial?.hsnCode,
     costPrice: initial?.costPrice,
-    reorderLevel: initial?.reorderLevel,
+    reorderLevel: initial?.reorderLevel ?? 5,
     taxRatePct: initial?.taxRatePct ?? 0,
   });
   const [saving, setSaving] = useState(false);
@@ -108,108 +111,205 @@ export function ProductForm({ mode, initial, onSaved }: ProductFormProps) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="grid md:grid-cols-2 gap-4">
-        <div className="space-y-1">
-          <label className="text-sm font-medium">Name</label>
-          <Input value={form.name} onChange={(e) => update("name", e.target.value)} placeholder="Toy Car" />
-        </div>
-        <div className="space-y-1">
-          <label className="text-sm font-medium">SKU</label>
-          <Input value={form.sku} onChange={(e) => update("sku", e.target.value)} placeholder="SKU-001" />
-        </div>
-        <div className="space-y-1">
-          <label className="text-sm font-medium">HSN Code</label>
-          <Input value={form.hsnCode ?? ""} onChange={(e) => update("hsnCode", e.target.value)} placeholder="9503" />
-        </div>
-        <div className="space-y-1">
-          <label className="text-sm font-medium">Category</label>
-          <select
-            className="h-9 rounded-md border bg-background px-3 text-sm"
-            value={form.category ?? ""}
-            onChange={(e) => applyCategoryDefaults(e.target.value || undefined)}
-          >
-            <option value="">Select category</option>
-            {categories.map((c) => (
-              <option key={c.id} value={c.name}>{c.name} ({c.code})</option>
-            ))}
-          </select>
-        </div>
-
-        {/* Pricing Section */}
-        <div className="space-y-1">
-          <label className="text-sm font-medium">Selling Price</label>
-          <Input
-            type="number"
-            step="0.01"
-            value={String(form.unitPrice)}
-            onChange={(e) => update("unitPrice", parseFloat(e.target.value) || 0)}
-            placeholder="399.00"
-          />
-        </div>
-
-        <div className="space-y-1">
-          <label className="text-sm font-medium">MRP (Print Label)</label>
-          <Input
-            type="number"
-            step="0.01"
-            value={form.mrp ?? ""}
-            onChange={(e) => {
-              const val = parseFloat(e.target.value);
-              // Store as undefined if empty/NaN so it doesn't overwrite with 0
-              update("mrp", Number.isNaN(val) ? undefined : val);
-            }}
-            placeholder="Leave empty if same as SP"
-          />
-        </div>
-
-        <div className="space-y-1">
-          <label className="text-sm font-medium">Cost Price</label>
-          <Input type="number" step="0.01" value={String(form.costPrice ?? 0)} onChange={(e) => update("costPrice", parseFloat(e.target.value) || 0)} placeholder="250.00" />
-        </div>
-
-        <div className="space-y-1">
-          <label className="text-sm font-medium">GST %</label>
-          <Input
-            type="number"
-            step="0.01"
-            value={form.taxRatePct === undefined || form.taxRatePct === null ? "" : String(form.taxRatePct)}
-            onChange={(e) => {
-              if (e.target.value === "") {
-                update("taxRatePct", undefined);
-              } else {
-                const val = parseFloat(e.target.value);
-                update("taxRatePct", Number.isNaN(val) ? 0 : val);
-              }
-            }}
-            placeholder="12"
-          />
-        </div>
-
-        <div className="space-y-1">
-          <label className="text-sm font-medium">Stock</label>
-          <Input type="number" value={String(form.stock)} onChange={(e) => update("stock", parseInt(e.target.value || "0", 10))} placeholder="100" />
-        </div>
-        <div className="space-y-1">
-          <label className="text-sm font-medium">Reorder Level</label>
-          <Input type="number" value={String(form.reorderLevel ?? 0)} onChange={(e) => update("reorderLevel", parseInt(e.target.value || "0", 10))} placeholder="10" />
-        </div>
-        <div className="space-y-1">
-          <label className="text-sm font-medium">Active</label>
-          <select
-            className="h-9 rounded-md border bg-background px-3 text-sm"
-            value={form.active ? "true" : "false"}
-            onChange={(e) => update("active", e.target.value === "true")}
-          >
-            <option value="true">Active</option>
-            <option value="false">Inactive</option>
-          </select>
+    <form onSubmit={handleSubmit} className="space-y-6 max-w-4xl pb-16 font-sans">
+      
+      {/* Essential Details Card */}
+      <div className="bg-[#fff0f2]/60 rounded-[2rem] p-8 border border-slate-100/50 shadow-sm relative overflow-hidden">
+        <h2 className="text-xl font-extrabold text-[#b7102a] mb-6 flex items-center gap-3">
+          <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center text-[#b7102a] shadow-sm">
+             <MSIcon name="edit_document" />
+          </div>
+          Essential Details
+        </h2>
+        
+        <div className="grid md:grid-cols-2 gap-x-6 gap-y-5 relative z-10">
+          <div className="space-y-2">
+            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Product Name <span className="text-red-500">*</span></label>
+            <input 
+              required
+              className="w-full h-12 bg-white border-0 rounded-xl px-4 text-sm font-bold text-slate-700 shadow-sm outline-none ring-1 ring-slate-200/50 focus:ring-red-300 placeholder:text-slate-300 placeholder:font-medium transition-all"
+              value={form.name} 
+              onChange={(e) => update("name", e.target.value)} 
+              placeholder="e.g., Artisan Wooden Car" 
+            />
+          </div>
+          <div className="space-y-2">
+            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">SKU <span className="text-red-500">*</span></label>
+            <input 
+              required
+              className="w-full h-12 bg-white border-0 rounded-xl px-4 text-sm font-bold text-slate-700 shadow-sm outline-none ring-1 ring-slate-200/50 focus:ring-red-300 placeholder:text-slate-300 placeholder:font-medium transition-all"
+              value={form.sku} 
+              onChange={(e) => update("sku", e.target.value)} 
+              placeholder="e.g., TOY-CR-012" 
+            />
+          </div>
+          <div className="space-y-2">
+            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Category</label>
+            <div className="relative">
+              <select
+                className="w-full h-12 bg-white border-0 rounded-xl px-4 text-sm font-bold text-slate-700 shadow-sm appearance-none outline-none ring-1 ring-slate-200/50 focus:ring-red-300 transition-all"
+                value={form.category ?? ""}
+                onChange={(e) => applyCategoryDefaults(e.target.value || undefined)}
+              >
+                <option value="">Select category...</option>
+                {categories.map((c) => (
+                  <option key={c.id} value={c.name}>{c.name}</option>
+                ))}
+              </select>
+              <MSIcon name="expand_more" className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none text-[18px]"/>
+            </div>
+          </div>
+          <div className="space-y-2">
+            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">HSN Code</label>
+            <input 
+              className="w-full h-12 bg-white border-0 rounded-xl px-4 text-sm font-bold text-slate-700 shadow-sm outline-none ring-1 ring-slate-200/50 focus:ring-red-300 placeholder:text-slate-300 placeholder:font-medium transition-all"
+              value={form.hsnCode ?? ""} 
+              onChange={(e) => update("hsnCode", e.target.value)} 
+              placeholder="e.g., 950300" 
+            />
+          </div>
         </div>
       </div>
 
-      {error && <p className="text-sm text-destructive">{error}</p>}
-      <div className="flex gap-2">
-        <Button type="submit" disabled={saving}>{mode === "create" ? "Create" : "Save changes"}</Button>
+      {/* Pricing Section */}
+      <div className="bg-[#fff0f2]/60 rounded-[2rem] p-8 border border-slate-100/50 shadow-sm relative overflow-hidden">
+        <h2 className="text-xl font-extrabold text-[#b7102a] mb-6 flex items-center gap-3">
+          <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center text-[#b7102a] shadow-sm">
+             <MSIcon name="payments" />
+          </div>
+          Pricing & Tax
+        </h2>
+        
+        <div className="grid md:grid-cols-2 gap-x-6 gap-y-5 relative z-10">
+          <div className="space-y-2">
+            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Selling Price <span className="text-red-500">*</span></label>
+            <div className="relative">
+              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">₹</span>
+              <input
+                required
+                type="number" step="0.01" min="0"
+                className="w-full h-12 bg-white border-0 rounded-xl pl-8 pr-4 text-sm font-extrabold text-slate-900 shadow-sm outline-none ring-1 ring-slate-200/50 focus:ring-red-300 placeholder:text-slate-300 placeholder:font-medium transition-all"
+                value={form.unitPrice || ""}
+                onChange={(e) => update("unitPrice", parseFloat(e.target.value) || 0)}
+                placeholder="0.00"
+              />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">MRP (Print Label)</label>
+            <div className="relative">
+              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">₹</span>
+              <input
+                type="number" step="0.01" min="0"
+                className="w-full h-12 bg-white border-0 rounded-xl pl-8 pr-4 text-sm font-bold text-slate-700 shadow-sm outline-none ring-1 ring-slate-200/50 focus:ring-red-300 placeholder:text-slate-300 placeholder:font-medium transition-all"
+                value={form.mrp ?? ""}
+                onChange={(e) => update("mrp", Number.isNaN(parseFloat(e.target.value)) ? undefined : parseFloat(e.target.value))}
+                placeholder="Leave empty if same as SP"
+              />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Cost Price</label>
+             <div className="relative">
+               <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">₹</span>
+               <input 
+                 type="number" step="0.01" min="0"
+                 className="w-full h-12 bg-white border-0 rounded-xl pl-8 pr-4 text-sm font-bold text-slate-700 shadow-sm outline-none ring-1 ring-slate-200/50 focus:ring-red-300 placeholder:text-slate-300 placeholder:font-medium transition-all"
+                 value={form.costPrice || ""} 
+                 onChange={(e) => update("costPrice", parseFloat(e.target.value) || 0)} 
+                 placeholder="0.00" 
+               />
+             </div>
+          </div>
+
+          <div className="space-y-2">
+             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">GST Rate %</label>
+             <div className="relative">
+                <input
+                  type="number" step="0.1" min="0"
+                  className="w-full h-12 bg-white border-0 rounded-xl px-4 text-sm font-extrabold text-[#b7102a] shadow-sm outline-none ring-1 ring-slate-200/50 focus:ring-red-300 placeholder:text-slate-300 placeholder:font-medium transition-all"
+                  value={form.taxRatePct === undefined || form.taxRatePct === null ? "" : form.taxRatePct}
+                  onChange={(e) => update("taxRatePct", e.target.value === "" ? undefined : (Number.isNaN(parseFloat(e.target.value)) ? 0 : parseFloat(e.target.value)))}
+                  placeholder="18.0"
+                />
+             </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Inventory Section */}
+      <div className="bg-[#fff0f2]/60 rounded-[2rem] p-8 border border-slate-100/50 shadow-sm relative overflow-hidden">
+        <h2 className="text-xl font-extrabold text-[#b7102a] mb-6 flex items-center gap-3">
+          <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center text-[#b7102a] shadow-sm">
+             <MSIcon name="inventory_2" />
+          </div>
+          Inventory Management
+        </h2>
+        
+        <div className="grid md:grid-cols-3 gap-x-6 gap-y-5 relative z-10">
+          <div className="space-y-2">
+            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Current Stock</label>
+            <input 
+              type="number" 
+              className="w-full h-12 bg-white border-0 rounded-xl px-4 text-sm font-bold text-slate-700 shadow-sm outline-none ring-1 ring-slate-200/50 focus:ring-red-300 placeholder:text-slate-300 placeholder:font-medium transition-all"
+              value={form.stock === 0 ? "" : form.stock} 
+              onChange={(e) => update("stock", parseInt(e.target.value || "0", 10))} 
+              placeholder="e.g., 100" 
+            />
+          </div>
+          <div className="space-y-2">
+            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Reorder Alert Level</label>
+            <input 
+              type="number" 
+              className="w-full h-12 bg-white border-0 rounded-xl px-4 text-sm font-bold text-slate-700 shadow-sm outline-none ring-1 ring-slate-200/50 focus:ring-red-300 placeholder:text-slate-300 placeholder:font-medium transition-all"
+              value={form.reorderLevel === 0 ? "" : (form.reorderLevel ?? "")} 
+              onChange={(e) => update("reorderLevel", parseInt(e.target.value || "0", 10))} 
+              placeholder="e.g., 10" 
+            />
+          </div>
+          <div className="space-y-2">
+            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Publish Status</label>
+            <div className="relative">
+              <select
+                className={`w-full h-12 bg-white border-0 rounded-xl px-4 text-sm font-bold shadow-sm appearance-none outline-none ring-1 ring-slate-200/50 focus:ring-red-300 transition-all ${form.active ? 'text-[#059669]' : 'text-slate-500'}`}
+                value={form.active ? "true" : "false"}
+                onChange={(e) => update("active", e.target.value === "true")}
+              >
+                <option value="true">Active Store</option>
+                <option value="false">Hidden / Draft</option>
+              </select>
+              <MSIcon name="expand_more" className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none text-[18px]"/>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {error && (
+        <div className="p-4 bg-red-50 border border-red-100 text-[#b7102a] text-[13px] font-bold rounded-xl flex items-center gap-3">
+          <MSIcon name="error" />
+          {error}
+        </div>
+      )}
+
+      {/* Action Footer */}
+      <div className="flex justify-start gap-4 pt-4 border-t border-slate-100/50 mt-8">
+        <button 
+          type="button" 
+          onClick={() => window.history.back()}
+          className="h-12 px-8 rounded-full border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 transition-all font-bold hover:text-slate-900 shadow-sm text-sm"
+        >
+          Cancel
+        </button>
+        <button 
+          type="submit" 
+          disabled={saving}
+          className="h-12 px-10 rounded-full bg-[#b7102a] text-white font-extrabold hover:brightness-110 shadow-lg shadow-red-900/20 transition-all disabled:opacity-50 flex items-center gap-2 text-sm"
+        >
+          {saving && <MSIcon name="progress_activity" className="animate-spin text-[18px]" />}
+          {mode === "create" ? "Create Product" : "Save Changes"}
+        </button>
       </div>
     </form>
   );

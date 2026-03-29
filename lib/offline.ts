@@ -16,6 +16,8 @@ export type OfflineOp = {
   payload: any;
   createdAt: string;
   attempts?: number;
+  failed?: boolean;
+  error?: string;
 };
 
 const DB_NAME = "peekaboo_offline_v1";
@@ -117,7 +119,9 @@ export async function processQueue(onProgress?: (left: number) => void): Promise
   }
   running = true;
   try {
-    const ops = (await listOps()).sort((a, b) => (a.createdAt < b.createdAt ? -1 : 1));
+    const ops = (await listOps())
+      .filter((op) => !op.failed)
+      .sort((a, b) => (a.createdAt < b.createdAt ? -1 : 1));
     for (const op of ops) {
       if (!navigator.onLine) break; // stop if offline again
       try {
@@ -131,9 +135,11 @@ export async function processQueue(onProgress?: (left: number) => void): Promise
           await receiveStock(op.payload);
         }
         await removeOp(op.id);
-      } catch (err) {
-        // If a permanent error, skip and leave in queue for manual review. Otherwise retry on next sync.
-        console.error('Offline op failed, will retry later', op.id, err);
+      } catch (err: any) {
+        // Distinguish between transient (network) vs permanent (e.g., out of stock)
+        const isNetworkErr = err?.name === 'FirebaseError' && 
+          (err.code === 'unavailable' || err.code === 'network-request-failed');
+        console.error('Offline op failed', op.id, err);
         // increment attempts count
         const db = await openDb();
         const tx = db.transaction(STORE_NAME, 'readwrite');
@@ -143,12 +149,20 @@ export async function processQueue(onProgress?: (left: number) => void): Promise
           const existing = recReq.result as OfflineOp | undefined;
           if (existing) {
             existing.attempts = (existing.attempts || 0) + 1;
+            // Shunt permanent bugs (or retried too many times) so they don't brick the queue
+            if (!isNetworkErr && existing.attempts >= 3) {
+              existing.failed = true;
+              existing.error = err?.message || String(err);
+              console.warn(`Op ${op.id} permanently failed and is disabled in queue.`);
+            }
             store.put(existing);
           }
         };
         await new Promise((res) => (tx.oncomplete = res));
-        // break to avoid hammering
-        break;
+        // Only block/break the queue if it's an actual network failure
+        if (isNetworkErr) {
+          break;
+        }
       }
     }
   } finally {

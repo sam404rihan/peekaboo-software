@@ -12,9 +12,9 @@ export function DropdownPanel({ className, children }: Props) {
   return (
     <div
       className={cn(
-        "mt-2 rounded-md border shadow-lg",
-        "bg-background text-foreground",
-        "bg-white dark:bg-neutral-900 backdrop-blur-0",
+        "mt-2 rounded-xl border border-outline-variant/20 shadow-xl",
+        "bg-surface-container-lowest text-on-surface",
+        "backdrop-blur-sm",
         "z-20",
         className
       )}

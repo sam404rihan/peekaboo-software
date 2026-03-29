@@ -1,39 +1,36 @@
 "use client";
 import { Avatar } from "@/components/ui/avatar";
-import { Input } from "@/components/ui/input";
-import { Bell } from "lucide-react";
 import { useAuth } from "@/components/auth/auth-provider";
 import { signOut } from "@/lib/auth";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Button } from "@/components/ui/button";
 import { DropdownPanel } from "@/components/ui/dropdown-panel";
 import { observeLowStockProducts } from "@/lib/products";
 import type { ProductDoc } from "@/lib/models";
 import { useRouter } from "next/navigation";
+import { cn } from "@/lib/utils";
+
+function MSIcon({ name, className }: { name: string; className?: string }) {
+  return <span className={cn("material-symbols-outlined", className)}>{name}</span>;
+}
 
 export function Topbar() {
   const router = useRouter();
   const { user, role } = useAuth();
-  const [open, setOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
   const [lowItems, setLowItems] = useState<ProductDoc[]>([]);
   const notifRef = useRef<HTMLDivElement | null>(null);
-  const menuRef = useRef<HTMLDivElement | null>(null);
 
   const lowCount = lowItems.length;
   const isAdmin = role === "admin";
 
   useEffect(() => {
+    if (!user || !role) return;
     const unsub = observeLowStockProducts(setLowItems);
     return () => unsub?.();
-  }, []);
+  }, [user, role]);
 
   const handleClickOutside = useCallback(
-    (
-      e: MouseEvent,
-      ref: React.RefObject<HTMLDivElement | null>,
-      setter: (v: boolean) => void
-    ) => {
+    (e: MouseEvent, ref: React.RefObject<HTMLDivElement | null>, setter: (v: boolean) => void) => {
       if (ref.current && !ref.current.contains(e.target as Node)) {
         setter(false);
       }
@@ -43,18 +40,10 @@ export function Topbar() {
 
   useEffect(() => {
     if (!notifOpen) return;
-    const handler = (e: MouseEvent) =>
-      handleClickOutside(e, notifRef, setNotifOpen);
+    const handler = (e: MouseEvent) => handleClickOutside(e, notifRef, setNotifOpen);
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, [notifOpen, handleClickOutside]);
-
-  useEffect(() => {
-    if (!open) return;
-    const handler = (e: MouseEvent) => handleClickOutside(e, menuRef, setOpen);
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, [open, handleClickOutside]);
 
   const handleSignOut = useCallback(() => {
     signOut().finally(() => {
@@ -63,124 +52,94 @@ export function Topbar() {
   }, []);
 
   return (
-    <header className="h-14 border-b flex items-center gap-4 px-4 bg-background relative">
-      <div className="flex-1 flex items-center gap-5">
-        <div className="relative max-w-sm w-full mx-auto">
-          <Input
-            placeholder="Search..."
-            className="pl-4 rounded-full border-2 border-gray-300 shadow-md 
-            outline-none"
-          />
+    <header className="sticky top-0 z-40 w-full bg-[#fcfcfc] border-b border-slate-100 h-20 flex items-center shrink-0">
+      <div className="flex items-center justify-between gap-4 w-full px-8">
+        {/* Search */}
+        <div className="flex-1 max-w-xl">
+          <div className="relative">
+            <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-[18px] text-slate-400">search</span>
+            <input
+              placeholder="Search specific toys..."
+              className="w-full h-10 pl-11 pr-4 rounded-full bg-white border border-slate-100 text-sm font-bold text-slate-700 placeholder:text-slate-400 placeholder:font-medium focus:outline-none focus:ring-1 focus:ring-red-200 focus:border-red-200 transition-all shadow-sm"
+            />
+          </div>
         </div>
-      </div>
 
-      {/* Notifications */}
-      <div className="relative" ref={notifRef}>
-        <button
-          className="relative rounded-full p-2 hover:bg-muted text-muted-foreground"
-          aria-label="Notifications"
-          onClick={() => setNotifOpen((v) => !v)}
-          aria-haspopup="menu"
-          aria-expanded={notifOpen}
-        >
-          <Bell className="h-5 w-5" />
-          {isAdmin && lowCount > 0 && (
-            <span
-              className="absolute -top-0.5 -left-0.7 min-w-[16px] h-4
-            rounded-full text-destructive-foreground text-[10px] 
-            font-medium leading-4 text-center bg-red-500 opacity-80 
-            text-white"
+        {/* Right Actions */}
+        <div className="flex items-center gap-5">
+          {/* Notifications */}
+          <div className="relative" ref={notifRef}>
+            <button
+              className="relative p-1.5 text-slate-500 hover:text-slate-800 transition-colors"
+              onClick={() => setNotifOpen((v) => !v)}
             >
-              {lowCount}
-            </span>
-          )}
-        </button>
-
-        {notifOpen && (
-          <DropdownPanel className="absolute right-2 w-80">
-            <div
-              className="px-3 py-2 text-sm text-muted-foreground 
-            border-b font-medium bg-gray-50"
-            >
-              Notifications
-            </div>
-            <div className="max-h-72 overflow-auto p-2 bg-gray-50">
-              {lowItems.length === 0 ? (
-                <div className="text-xs text-muted-foreground px-2 py-4">
-                  No low stock items.
-                </div>
-              ) : (
-                <ul className="space-y-2">
-                  {lowItems.map((product) => (
-                    <li
-                      key={product.id}
-                      className="flex items-start justify-between gap-2 text-sm"
-                    >
-                      <div className="min-w-0">
-                        <div className="font-medium truncate">Low Stock</div>
-                        <div className="text-xs text-muted-foreground truncate">
-                          {product.name}
-                        </div>
-                      </div>
-
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="text-blue-700"
-                        onClick={() =>
-                          isAdmin
-                            ? router.push(`/products/${product.id}`)
-                            : router.push("/products")
-                        }
-                      >
-                        View
-                      </Button>
-                    </li>
-                  ))}
-                </ul>
+              <MSIcon name="notifications" className="text-[22px]" />
+              {isAdmin && lowCount > 0 && (
+                <span className="absolute top-1.5 right-2 min-w-[8px] h-2 w-2 rounded-full bg-[#b7102a] ring-2 ring-[#fcfcfc]" />
               )}
-            </div>
-            <div className="p-2 border-t text-right bg-gray-50">
-              <Button
-                size="sm"
-                variant="ghost"
-                className="text-blue-700 hover:text-blue-600"
-                onClick={() => router.push("/products")}
-              >
-                View all
-              </Button>
-            </div>
-          </DropdownPanel>
-        )}
-      </div>
+            </button>
 
-      {/* User Menu */}
-      <div className="relative" ref={menuRef}>
-        <button
-          onClick={() => setOpen((v) => !v)}
-          aria-haspopup="menu"
-          aria-expanded={open}
-          className="rounded-full border-2 
-          border-gray-300 hover:border-gray-400 focus:outline-none"
-        >
-          <Avatar fallback={(user?.email?.[0] || "U").toUpperCase()} />
-        </button>
-        {open && (
-          <DropdownPanel className="absolute right-0 w-40 ">
-            <div className="px-3 py-2 text-xs text-muted-foreground bg-gray-50">
-              {user?.email || "Signed in"}
-            </div>
-            <div className="p-2 bg-gray-50">
-              <Button
-                variant="outline"
-                className="w-full justify-start"
-                onClick={handleSignOut}
-              >
-                Sign out
-              </Button>
-            </div>
-          </DropdownPanel>
-        )}
+            {notifOpen && (
+              <DropdownPanel className="absolute right-0 w-80 mt-2 z-50">
+                <div className="px-4 py-3 text-sm font-bold text-slate-800 border-b border-slate-100 flex items-center justify-between">
+                  Alerts
+                  {lowCount > 0 && (
+                    <span className="text-[10px] font-black tracking-widest uppercase text-white bg-[#b7102a] px-2 py-0.5 rounded-full">
+                      {lowCount} New
+                    </span>
+                  )}
+                </div>
+                <div className="max-h-72 overflow-auto">
+                  {lowItems.length === 0 ? (
+                    <div className="text-sm text-slate-400 font-medium px-4 py-8 text-center flex flex-col items-center">
+                      <MSIcon name="check_circle" className="text-[32px] text-slate-200 mb-2" />
+                      All operations normal
+                    </div>
+                  ) : (
+                    <ul className="divide-y divide-slate-50">
+                      {lowItems.map((product) => (
+                        <li key={product.id} className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors">
+                          <div className="w-8 h-8 rounded-full bg-[#fce8ec] flex items-center justify-center shrink-0">
+                            <MSIcon name="warning" className="text-[16px] text-[#b7102a]" />
+                          </div>
+                          <div className="flex-1 min-w-0 pr-2">
+                            <div className="text-[13px] font-bold text-slate-800 truncate">{product.name}</div>
+                            <div className="text-[11px] font-medium text-slate-500">{product.stock} left in stock</div>
+                          </div>
+                          <button
+                            className="text-[11px] font-extrabold text-[#b7102a] uppercase tracking-wider hover:underline shrink-0"
+                            onClick={() => isAdmin ? router.push(`/products/${product.id}`) : router.push("/products")}
+                          >
+                            View
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              </DropdownPanel>
+            )}
+          </div>
+
+          <button className="p-1.5 text-slate-500 hover:text-slate-800 transition-colors">
+            <MSIcon name="help" className="text-[22px]" />
+          </button>
+
+          {/* Divider */}
+          <div className="w-px h-6 bg-slate-200 shrink-0" />
+
+          {/* User Menu */}
+          <div className="flex items-center gap-3 pl-1">
+             <button onClick={handleSignOut} className="text-[13px] font-extrabold text-[#b7102a] hover:text-red-800 transition-colors uppercase tracking-widest hidden sm:block">
+                Logout
+             </button>
+             <Avatar
+               fallback={(user?.email?.[0] || "U").toUpperCase()}
+               className="bg-[#1e293b] text-white font-black hover:ring-2 hover:ring-red-200 hover:ring-offset-2 transition-all cursor-pointer"
+               title={user?.email || "User profile"}
+             />
+          </div>
+        </div>
       </div>
     </header>
   );

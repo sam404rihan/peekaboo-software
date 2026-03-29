@@ -1,5 +1,4 @@
 import type { Config } from "tailwindcss";
-// tailwindcss-animate plugin is added after install; imported dynamically below
 import animate from "tailwindcss-animate";
 
 const config: Config = {
@@ -20,6 +19,10 @@ const config: Config = {
       },
     },
     extend: {
+      fontFamily: {
+        sans: ["'Be Vietnam Pro'", "'Plus Jakarta Sans'", "system-ui", "sans-serif"],
+        display: ["'Plus Jakarta Sans'", "'Be Vietnam Pro'", "system-ui", "sans-serif"],
+      },
       colors: {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
@@ -29,10 +32,12 @@ const config: Config = {
         primary: {
           DEFAULT: "hsl(var(--primary))",
           foreground: "hsl(var(--primary-foreground))",
+          container: "hsl(var(--primary-container))",
         },
         secondary: {
           DEFAULT: "hsl(var(--secondary))",
           foreground: "hsl(var(--secondary-foreground))",
+          container: "hsl(var(--secondary-container))",
         },
         destructive: {
           DEFAULT: "hsl(var(--destructive))",
@@ -54,6 +59,31 @@ const config: Config = {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+        /* M3 Surface Hierarchy */
+        surface: {
+          DEFAULT: "hsl(var(--surface))",
+          bright: "hsl(var(--surface-bright))",
+          "container-lowest": "hsl(var(--surface-container-lowest))",
+          "container-low": "hsl(var(--surface-container-low))",
+          container: "hsl(var(--surface-container))",
+          "container-high": "hsl(var(--surface-container-high))",
+        },
+        "on-surface": {
+          DEFAULT: "hsl(var(--on-surface))",
+          variant: "hsl(var(--on-surface-variant))",
+        },
+        outline: {
+          DEFAULT: "hsl(var(--outline))",
+          variant: "hsl(var(--outline-variant))",
+        },
+        "on-primary-container": "hsl(var(--on-primary-container))",
+        "on-secondary-container": "hsl(var(--on-secondary-container))",
+        error: {
+          DEFAULT: "hsl(var(--error))",
+          container: "hsl(var(--error-container))",
+        },
+        "on-error": "hsl(var(--on-error))",
+        "on-error-container": "hsl(var(--on-error-container))",
       },
       borderRadius: {
         lg: "var(--radius)",

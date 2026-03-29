@@ -1,5 +1,5 @@
 "use client";
-import { db } from "@/lib/firebase";
+import { db, auth } from "@/lib/firebase";
 import { collection, serverTimestamp, runTransaction, doc, increment } from "firebase/firestore";
 import type { InvoiceDoc } from "@/lib/models";
 import { COLLECTIONS, GoodsReceiptDoc, GoodsReceiptLine } from "@/lib/models";
@@ -43,24 +43,24 @@ export async function checkoutCart(input: CheckoutInput): Promise<string> {
   // Compute inclusive totals: Subtotal = sum of (MRP * qty - lineDiscounts)
   const linesWithNet = input.lines.map(l => ({
     ...l,
-    net: l.unitPrice * l.qty - (l.lineDiscount ?? 0),
+    net: Math.round((l.unitPrice * l.qty - (l.lineDiscount ?? 0)) * 100) / 100,
   }));
-  const subtotal = linesWithNet.reduce((s, l) => s + l.net, 0);
+  const subtotal = Math.round(linesWithNet.reduce((s, l) => s + l.net, 0) * 100) / 100;
   const billDisc = input.billDiscount ?? 0;
   if (billDisc > subtotal) {
     throw new Error("Bill discount cannot exceed subtotal");
   }
   // Tax is derived from MRP (unitPrice) only, not reduced by discounts (post-tax discounts)
-  const taxTotal = input.lines.reduce((s, l) => {
+  const taxTotal = Math.round(input.lines.reduce((s, l) => {
     const rate = typeof (l as any).taxRatePct === 'number' ? (l as any).taxRatePct : 0;
     const r = (Number(rate) || 0) / 100;
     const gstPerUnit = r > 0 ? (l.unitPrice - l.unitPrice / (1 + r)) : 0;
     return s + gstPerUnit * l.qty;
-  }, 0);
-  const grandTotal = Math.max(0, subtotal - billDisc);
+  }, 0) * 100) / 100;
+  const grandTotal = Math.max(0, Math.round((subtotal - billDisc) * 100) / 100);
   const method = input.paymentMethod ?? 'cash';
   const refId = input.paymentReferenceId;
-  const cashierUserId = input.cashierUserId ?? 'current-user';
+  const cashierUserId = auth?.currentUser?.uid ?? input.cashierUserId ?? 'current-user';
   const cashierName = input.cashierName;
 
   // Single payment path only; no split payments
@@ -126,7 +126,7 @@ export async function checkoutCart(input: CheckoutInput): Promise<string> {
         quantityChange: -l.qty,
         type: 'sale',
         reason: 'sale',
-        userId: input.cashierUserId ?? 'current-user',
+        userId: auth?.currentUser?.uid ?? input.cashierUserId ?? 'current-user',
         relatedInvoiceId: invRef.id,
         unitCost: null,
         createdAt: serverTimestamp(),
@@ -212,7 +212,7 @@ export async function adjustStock(params: {
       quantityChange: params.delta,
       type: logType,
       reason: params.reason,
-      userId: params.userId ?? 'system',
+      userId: auth?.currentUser?.uid ?? params.userId ?? 'system',
       note: params.note ?? null,
       relatedInvoiceId: params.relatedInvoiceId ?? null,
       relatedReceiptId: params.relatedReceiptId ?? null,
@@ -251,7 +251,7 @@ export async function receiveStock(params: {
       docNo: params.docNo,
       docDate: params.docDate,
       note: params.note,
-      createdByUserId: params.createdByUserId,
+      createdByUserId: auth?.currentUser?.uid ?? params.createdByUserId,
       lines: params.lines,
       createdAt: now,
       updatedAt: now,
@@ -267,7 +267,7 @@ export async function receiveStock(params: {
         quantityChange: line.qty,
         type: 'purchase',
         reason: 'receive',
-        userId: params.createdByUserId,
+        userId: auth?.currentUser?.uid ?? params.createdByUserId,
         note: params.note ?? null,
         relatedReceiptId: recRef.id,
         unitCost: line.unitCost ?? null,

@@ -3,87 +3,110 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/components/auth/auth-provider";
-import { Avatar } from "@/components/ui/avatar";
-import { IoHome } from "react-icons/io5";
-import { FaBoxOpen } from "react-icons/fa";
-import { FaUsers } from "react-icons/fa6";
-import { FaFileInvoice } from "react-icons/fa6";
-import { FaChartBar } from "react-icons/fa6";
-import { JSX } from "react";
 
-const baseNav = [
-  { href: "/invoices", label: "Invoices", icon: <FaFileInvoice /> },
-  { href: "/reports", label: "Reports", icon: <FaChartBar /> },
-] as const;
+/* Material Symbol helper */
+function MSIcon({ name, className }: { name: string; className?: string }) {
+  return (
+    <span className={cn("material-symbols-outlined text-[20px]", className)}>
+      {name}
+    </span>
+  );
+}
 
 const Sidebar = () => {
-  const { role, user } = useAuth();
+  const { role, logout } = useAuth();
   const pathname = usePathname();
 
-  const navItems =
+  const topNavItems =
     role === "admin"
       ? [
-          { href: "/", label: "Dashboard", icon: <IoHome /> },
-          { href: "/products", label: "Products", icon: <FaBoxOpen /> },
-          { href: "/customers", label: "Customers", icon: <FaUsers /> },
-          { href: "/invoices", label: "Invoices", icon: <FaFileInvoice /> },
-          { href: "/reports", label: "Reports", icon: <FaChartBar /> },
-          { href: "/settings", label: "Settings", icon: "⚙️" },
+          { href: "/dashboard", label: "Dashboard", icon: "dashboard" },
+          { href: "/pos", label: "POS Terminal", icon: "point_of_sale" },
+          { href: "/products", label: "Inventory", icon: "inventory_2" },
+          { href: "/invoices", label: "Invoices", icon: "receipt_long" },
+          { href: "/customers", label: "Customers", icon: "group" },
+          { href: "/reports", label: "Reports", icon: "bar_chart" },
         ]
-      : baseNav;
+      : [
+          { href: "/pos", label: "POS", icon: "point_of_sale" },
+          { href: "/invoices", label: "Invoices", icon: "receipt_long" },
+          { href: "/customers", label: "Customers", icon: "group" },
+        ];
 
-  const renderNavItem = (item: {
-    href: string;
-    label: string;
-    icon: string | JSX.Element;
-  }) => {
-    const isActive =
-      pathname === item.href || pathname.startsWith(`${item.href}/`);
-    return (
-      <Link
-        key={item.href}
-        href={item.href}
-        className={cn(
-          "flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium border-2",
-          "bg-gray-100 shadow-sm gap-4 text-center border-transparent m-4",
-          "transition-colors border-gray-200 hover:bg-gray-200 hover:text-primary-foreground",
-          isActive
-            ? "bg-primary text-primary-foreground"
-            : "text-muted-foreground hover:bg-muted hover:text-foreground"
-        )}
-      >
-        <span>{item.icon}</span>
-        {item.label}
-      </Link>
-    );
-  };
+  const bottomNavItems = [
+    { href: "/settings", label: "Settings", icon: "settings" },
+    { href: "/support", label: "Support", icon: "help" },
+  ];
+
+  const isActive = (href: string) =>
+    pathname === href || (href !== "/dashboard" && pathname.startsWith(`${href}/`)) || (href === "/products" && pathname === "/products");
 
   return (
-    <aside className="hidden md:flex md:flex-col w-56 bg-background">
-      <div
-        className="h-14 flex items-center px-4 border-b-2
-      text-lg tracking-tight bg-gray-50 text-primary-foreground"
-      >
-        <span className="flex items-center gap-2 font-bold text-2xl">
-          <span className="text-primary font-bold pl-4">🧾</span> Billing Co.
-        </span>
+    <aside className="flex flex-col w-64 h-full bg-[#fcfcfc] border-r border-slate-100 overflow-hidden font-sans shrink-0">
+      {/* Brand */}
+      <div className="pt-8 pb-6 px-8">
+        <h2 className="font-black text-xl text-[#b7102a] tracking-tight leading-none mb-1">
+          {role === "admin" ? "Admin Panel" : "Cashier Panel"}
+        </h2>
+        <p className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Toy Co. Management</p>
       </div>
-      <div className="flex-1 flex flex-col justify-between h-full border-r-2 bg-gray-100">
-        <nav className="px-2 py-2 space-y-1 overflow-y-auto">
-          {navItems.map((item) => renderNavItem(item))}
-        </nav>
-        <div
-          className="p-4 flex items-center 
-      border-t bottom-0 mt-auto gap-3 bg-gray-200 text-muted-foreground"
-        >
-          <Avatar
-            fallback={(user?.email?.[0] || "U").toUpperCase()}
-            className="border"
-          />
-          <div className="text-xs border-l">
-            <p className="font-medium">{user?.email || "User"}</p>
-            <p className="text-xs text-muted-foreground">{role || "cashier"}</p>
-          </div>
+
+      {/* Top Navigation */}
+      <nav className="flex-1 mt-4 px-4 space-y-1">
+        {topNavItems.map((item) => (
+          <Link
+            key={item.href}
+            href={item.href}
+            className={cn(
+              "flex items-center gap-4 rounded-full px-5 py-3 text-[14px] transition-all duration-200",
+              isActive(item.href)
+                ? "bg-[#fff0f2]/80 text-[#b7102a] font-extrabold"
+                : "text-slate-600 hover:bg-slate-50 hover:text-slate-900 font-bold"
+            )}
+          >
+            <MSIcon
+              name={item.icon}
+              className={cn(
+                isActive(item.href)
+                  ? "text-[#b7102a]"
+                  : "text-slate-500"
+              )}
+            />
+            {item.label}
+          </Link>
+        ))}
+      </nav>
+
+      {/* Bottom Section */}
+      <div className="mt-auto px-6 pb-8 space-y-6">
+        {/* New Sale CTA - all roles */}
+        <Link
+            href="/pos"
+            className="flex items-center justify-center gap-2 w-full h-12 rounded-full bg-[#b7102a] text-white text-[14px] font-bold shadow-md hover:brightness-110 hover:-translate-y-0.5 transition-all shadow-red-900/20"
+          >
+            <MSIcon name="add_circle" className="text-[20px]" />
+            New Sale
+          </Link>
+        
+        {/* Bottom Navigation */}
+        <div className="space-y-1 border-t border-slate-100 pt-6">
+          {bottomNavItems.map((item) => (
+            <Link
+              key={item.href}
+              href={item.href}
+              className="flex items-center gap-4 rounded-full px-5 py-2.5 text-[14px] transition-all duration-200 text-slate-600 hover:bg-slate-50 hover:text-slate-900 font-bold"
+            >
+              <MSIcon name={item.icon} className="text-slate-500" />
+              {item.label}
+            </Link>
+          ))}
+          <button
+            onClick={() => logout()}
+            className="flex w-full items-center gap-4 rounded-full px-5 py-2.5 text-[14px] transition-all duration-200 text-slate-600 hover:bg-slate-50 hover:text-red-600 font-bold"
+          >
+            <MSIcon name="logout" className="text-slate-500" />
+            Logout
+          </button>
         </div>
       </div>
     </aside>

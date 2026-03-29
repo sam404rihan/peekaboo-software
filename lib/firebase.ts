@@ -6,13 +6,14 @@ import { getFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 
 // Read env via literal access so Next.js can inline them in the client bundle
+// Your web app's Firebase configuration
 const ENV = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+  apiKey: "AIzaSyAgKRIU0K7k4OlsOwrRt9uSYscV5gPupqY",
+  authDomain: "gugugaga-ab0b8.firebaseapp.com",
+  projectId: "gugugaga-ab0b8",
+  storageBucket: "gugugaga-ab0b8.firebasestorage.app",
+  messagingSenderId: "108640468200",
+  appId: "1:108640468200:web:41787577ae5c75e5dc5d5d"
 } as const;
 
 const missingEnv = (Object.entries(ENV)
