@@ -16,6 +16,8 @@ type FormState = Partial<Pick<SettingsDoc,
   | "showReviewLink"
   | "receiptFooterNote"
   | "receiptTermsConditions"
+  | "receiptTitle"
+  | "defaultPlaceOfSupply"
 >>;
 
 type ToggleProps = {
@@ -68,9 +70,11 @@ export default function ReceiptTemplateSettingsPage() {
           showReviewLink: data.showReviewLink ?? false,
           receiptFooterNote: data.receiptFooterNote ?? "",
           receiptTermsConditions: data.receiptTermsConditions ?? "",
+          receiptTitle: data.receiptTitle ?? "Tax Invoice",
+          defaultPlaceOfSupply: data.defaultPlaceOfSupply ?? "29",
         });
       } else {
-        setForm({ receiptPaperWidthMm: 80, receiptContentWidthMm: 75, autoPrintReceipt: true, showTaxLine: true, showReviewLink: false });
+        setForm({ receiptPaperWidthMm: 80, receiptContentWidthMm: 75, autoPrintReceipt: true, showTaxLine: true, showReviewLink: false, receiptTitle: "Tax Invoice", defaultPlaceOfSupply: "29" });
       }
     })();
   }, []);
@@ -94,6 +98,8 @@ export default function ReceiptTemplateSettingsPage() {
         showReviewLink: !!form.showReviewLink,
         receiptFooterNote: form.receiptFooterNote || "",
         receiptTermsConditions: form.receiptTermsConditions || "",
+        receiptTitle: form.receiptTitle || "Tax Invoice",
+        defaultPlaceOfSupply: form.defaultPlaceOfSupply || "29",
         updatedAt: new Date().toISOString(),
       } as any;
       await setDoc(ref, { ...payload, updatedAt: serverTimestamp() }, { merge: true });
@@ -176,6 +182,32 @@ export default function ReceiptTemplateSettingsPage() {
       {/* Text Fields */}
       <div className="bg-white rounded-[2rem] border border-slate-100 shadow-sm p-6 space-y-5">
         <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">Receipt Content</p>
+
+        <div className="grid grid-cols-2 gap-4">
+          <div className="flex flex-col gap-1.5">
+            <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest">Receipt Title</label>
+            <input
+              value={form.receiptTitle || ""}
+              onChange={e => update("receiptTitle", e.target.value)}
+              disabled={!isAdmin}
+              placeholder="Tax Invoice"
+              className="h-11 bg-slate-50 border border-slate-200 rounded-xl px-4 text-sm font-bold text-slate-700 outline-none focus:ring-1 focus:ring-red-300 disabled:opacity-50 placeholder:font-normal placeholder:text-slate-400"
+            />
+            <p className="text-[11px] text-slate-400 font-medium">Shown at the top of every invoice (e.g. Tax Invoice, Receipt)</p>
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest">Default State Code</label>
+            <input
+              value={form.defaultPlaceOfSupply || ""}
+              onChange={e => update("defaultPlaceOfSupply", e.target.value)}
+              disabled={!isAdmin}
+              placeholder="29"
+              className="h-11 bg-slate-50 border border-slate-200 rounded-xl px-4 text-sm font-bold text-slate-700 outline-none focus:ring-1 focus:ring-red-300 disabled:opacity-50 placeholder:font-normal placeholder:text-slate-400"
+            />
+            <p className="text-[11px] text-slate-400 font-medium">GST place of supply state code (e.g. 29 for Karnataka)</p>
+          </div>
+        </div>
+
         <div className="flex flex-col gap-1.5">
           <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest">Footer Note</label>
           <input

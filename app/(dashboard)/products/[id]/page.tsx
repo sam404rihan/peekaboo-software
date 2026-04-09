@@ -69,6 +69,7 @@ export default function EditProductPage() {
                   unitPrice: product.unitPrice,
                   stock: product.stock,
                   active: product.active,
+                  brand: product.brand,
                   category: product.category,
                   hsnCode: product.hsnCode,
                   costPrice: product.costPrice,

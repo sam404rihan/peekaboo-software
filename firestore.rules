@@ -33,10 +33,6 @@ service cloud.firestore {
       return n is number && n >= 0;
     }
 
-    function isPct(n) {
-      return n is number && n >= 0 && n <= 100;
-    }
-
     function onlyChanges(keys) {
       return request.resource.data.diff(resource.data).changedKeys().hasOnly(keys);
     }
@@ -73,7 +69,7 @@ service cloud.firestore {
     }
 
     // ---------------------------------------------------------------
-    // Products  ← this was blocking the Excel upload
+    // Products
     // ---------------------------------------------------------------
     match /Products/{id} {
       allow read: if isStaff();
@@ -182,6 +178,22 @@ service cloud.firestore {
       allow read: if isStaff();
       allow write: if isAdmin();
       allow create: if isStaff();
+    }
+
+    // ---------------------------------------------------------------
+    // Coupons
+    // ---------------------------------------------------------------
+    match /Coupons/{id} {
+      // All staff can read (cashiers validate coupons at POS)
+      allow read: if isStaff();
+      // Admin: full control (create, update all fields, delete)
+      allow create, delete: if isAdmin();
+      allow update: if isAdmin();
+      // Cashier: can only increment usedCount after a successful checkout
+      allow update: if isStaff() &&
+        onlyChanges(['usedCount', 'updatedAt']) &&
+        request.resource.data.usedCount is number &&
+        request.resource.data.usedCount == resource.data.usedCount + 1;
     }
 
     // ---------------------------------------------------------------

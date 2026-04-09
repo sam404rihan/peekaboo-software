@@ -46,6 +46,8 @@ export default function ExchangePage() {
   // Removed priorReturned state (not used elsewhere)
   const [scanValue, setScanValue] = useState("");
   const [busy, setBusy] = useState(false);
+  const [payMethod, setPayMethod] = useState<'cash' | 'card' | 'upi' | 'wallet'>('cash');
+  const [payRef, setPayRef] = useState('');
   const inputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
@@ -292,7 +294,8 @@ export default function ExchangePage() {
             })),
             cashierUserId: user.uid,
             cashierName: user.displayName || undefined,
-            paymentMethod: diffRough > 0 ? "cash" : undefined,
+            paymentMethod: diffRough > 0 ? payMethod : undefined,
+            paymentReferenceId: diffRough > 0 && payRef.trim() ? payRef.trim() : undefined,
             refundMethod: diffRough < 0 ? "cash" : undefined,
             opId: id,
           };
@@ -328,7 +331,8 @@ export default function ExchangePage() {
           })),
           cashierUserId: user.uid,
           cashierName: user.displayName || undefined,
-          paymentMethod: diffRough > 0 ? "cash" : undefined,
+          paymentMethod: diffRough > 0 ? payMethod : undefined,
+          paymentReferenceId: diffRough > 0 && payRef.trim() ? payRef.trim() : undefined,
           refundMethod: diffRough < 0 ? "cash" : undefined,
           opId: `op-ex-${Date.now()}`,
         });
@@ -347,6 +351,17 @@ export default function ExchangePage() {
         } else {
           toast({ title: "No balance due", variant: "success" });
         }
+        fetch("/api/notify/exchange", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            originalInvoiceNumber: inv.invoiceNumber,
+            newInvoiceNumber: res.newInvoiceId,
+            difference: res.difference,
+            performedBy: user?.displayName || user?.email || "Unknown",
+            performedAt: new Date().toISOString(),
+          }),
+        }).catch(() => {});
         router.push(`/invoices/${res.newInvoiceId}`);
       }
     } catch (e) {
@@ -503,12 +518,45 @@ export default function ExchangePage() {
         </div>
       </div>
 
+      {diffPreview > 0 && (
+        <div className="border-2 border-amber-400 bg-amber-50 rounded-xl p-4 space-y-3">
+          <p className="font-bold text-amber-800 text-base">
+            Extra charge: collect ₹{diffPreview.toFixed(2)} from customer
+          </p>
+          <div className="flex flex-wrap gap-2 items-center">
+            <span className="text-sm font-medium text-amber-700">Payment method:</span>
+            {(['cash', 'card', 'upi', 'wallet'] as const).map(m => (
+              <button
+                key={m}
+                type="button"
+                onClick={() => setPayMethod(m)}
+                className={`h-8 px-3 rounded border text-sm font-semibold transition-colors ${
+                  payMethod === m
+                    ? 'bg-amber-600 text-white border-amber-600'
+                    : 'bg-white text-amber-800 border-amber-300 hover:bg-amber-100'
+                }`}
+              >
+                {m.toUpperCase()}
+              </button>
+            ))}
+          </div>
+          {(payMethod === 'card' || payMethod === 'upi') && (
+            <input
+              className="h-8 w-64 border rounded px-2 text-sm"
+              placeholder="Reference / transaction ID (optional)"
+              value={payRef}
+              onChange={e => setPayRef(e.target.value)}
+            />
+          )}
+        </div>
+      )}
+
       <div className="border rounded-xl p-4 flex items-center justify-between">
         <div className="text-sm text-muted-foreground">
           <div>New items subtotal: ₹{newSubtotal.toFixed(2)}</div>
           <div>Estimated return credit: ₹{returnCredit.toFixed(2)}</div>
           {diffPreview > 0 && (
-            <div className="text-green-700">
+            <div className="text-amber-700 font-semibold">
               Collect from customer: ₹{diffPreview.toFixed(2)}
             </div>
           )}
@@ -530,7 +578,7 @@ export default function ExchangePage() {
           <button
             className="h-9 px-4 rounded bg-primary text-white disabled:opacity-50"
             onClick={submitExchange}
-            disabled={busy || newLines.length === 0}
+            disabled={busy || newLines.length === 0 || (diffPreview > 0 && !payMethod)}
           >
             Confirm Exchange
           </button>

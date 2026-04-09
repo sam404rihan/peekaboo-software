@@ -5,7 +5,7 @@ import type { InvoiceDoc } from "@/lib/models";
 import { COLLECTIONS, GoodsReceiptDoc, GoodsReceiptLine } from "@/lib/models";
 
 export type CheckoutInput = {
-  lines: Array<{ productId: string; name: string; qty: number; unitPrice: number; lineDiscount?: number }>;
+  lines: Array<{ productId: string; name: string; qty: number; unitPrice: number; lineDiscount?: number; taxRatePct?: number }>;
   billDiscount?: number;
   // Single payment only
   paymentMethod?: 'cash' | 'card' | 'upi' | 'wallet';
@@ -54,7 +54,7 @@ export async function checkoutCart(input: CheckoutInput): Promise<string> {
   }
   // Tax is derived from MRP (unitPrice) only, not reduced by discounts (post-tax discounts)
   const taxTotal = Math.round(input.lines.reduce((s, l) => {
-    const rate = typeof (l as any).taxRatePct === 'number' ? (l as any).taxRatePct : 0;
+    const rate = typeof l.taxRatePct === 'number' ? l.taxRatePct : 0;
     const r = (Number(rate) || 0) / 100;
     const gstPerUnit = r > 0 ? (l.unitPrice - l.unitPrice / (1 + r)) : 0;
     return s + gstPerUnit * l.qty;
@@ -139,33 +139,37 @@ export async function checkoutCart(input: CheckoutInput): Promise<string> {
     // Create invoice document
     const inv: Omit<InvoiceDoc, 'id'> = {
       invoiceNumber,
-      // customerId omitted unless provided
-  items: linesWithNet.map((l: any) => ({ productId: l.productId, name: l.name, quantity: l.qty, unitPrice: l.unitPrice, taxRatePct: (l as any).taxRatePct || undefined, discountAmount: l.lineDiscount ?? 0 })),
+      items: linesWithNet.map((l: any) => ({ 
+        productId: l.productId, 
+        name: l.name, 
+        quantity: l.qty, 
+        unitPrice: l.unitPrice, 
+        taxRatePct: l.taxRatePct ?? 0,
+        discountAmount: l.lineDiscount ?? 0 
+      })),
       subtotal,
       taxTotal,
-  discountTotal: billDisc,
+      discountTotal: billDisc,
       grandTotal,
-  paymentMethod: method,
-  ...(refId ? { paymentReferenceId: refId } : {}),
+      paymentMethod: method,
       balanceDue: 0,
       cashierUserId,
-      ...(cashierName ? { cashierName } : {}),
       status: 'paid',
       issuedAt: nowIso,
       createdAt: nowIso,
       updatedAt: nowIso,
-      notes: input.notes,
     };
-
-    // No-op: payments already validated above
 
     // Create invoice inside the transaction using tx.set
     tx.set(invRef, {
       ...inv,
+      ...(input.notes ? { notes: input.notes } : {}),
+      ...(input.paymentReferenceId ? { paymentReferenceId: input.paymentReferenceId } : {}),
+      ...(input.cashierName ? { cashierName: input.cashierName } : {}),
       ...(input.customerId ? { customerId: input.customerId } : {}),
       ...(input.customerName ? { customerName: input.customerName } : {}),
       // Idempotency: allow external callers to set opId to avoid duplicates on replay
-      ...(typeof (input as any).opId === 'string' ? { opId: (input as any).opId } : {}),
+      ...(typeof input.opId === 'string' ? { opId: input.opId } : {}),
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     });
@@ -184,8 +188,6 @@ export async function checkoutCart(input: CheckoutInput): Promise<string> {
   return invoiceId;
 }
 
-// Trivial export to ensure module resolution picks up this file
-export const __POS__MODULE = true;
 
 // Inventory: generic stock adjustment with log entry
 export type AdjustReason = 'sale' | 'receive' | 'correction' | 'stocktake' | 'return';
@@ -250,17 +252,21 @@ export async function receiveStock(params: {
   const receiptId = await runTransaction(dbx, async (tx) => {
     const recRef = doc(collection(dbx, COLLECTIONS.goodsReceipts));
     const receipt: Omit<GoodsReceiptDoc, 'id'> = {
-      supplierName: params.supplierName,
-      supplierCode: params.supplierCode,
-      docNo: params.docNo,
-      docDate: params.docDate,
-      note: params.note,
       createdByUserId: auth?.currentUser?.uid ?? params.createdByUserId,
       lines: params.lines,
       createdAt: now,
       updatedAt: now,
     };
-    tx.set(recRef, { ...receipt, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
+    tx.set(recRef, { 
+      ...receipt, 
+      ...(params.supplierName ? { supplierName: params.supplierName } : {}),
+      ...(params.supplierCode ? { supplierCode: params.supplierCode } : {}),
+      ...(params.docNo ? { docNo: params.docNo } : {}),
+      ...(params.docDate ? { docDate: params.docDate } : {}),
+      ...(params.note ? { note: params.note } : {}),
+      createdAt: serverTimestamp(), 
+      updatedAt: serverTimestamp() 
+    });
     // Apply increments and logs per line
     for (const line of params.lines) {
       const pRef = doc(dbx, COLLECTIONS.products, line.productId);

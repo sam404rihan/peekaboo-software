@@ -1,4 +1,4 @@
-## Peekaboo POS – Launch Checklist and Roadmap
+## Komfort POS – Launch Checklist and Roadmap
 
 This file lists the final quick polishes to complete before build/launch, plus a roadmap of future additions that can follow without blocking go‑live.
 

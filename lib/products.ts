@@ -99,7 +99,8 @@ export type UpsertProductInput = {
   unitPrice: number;
   stock: number;
   active: boolean;
-  mrp?: number; // Added to input type
+  brand?: string;
+  mrp?: number;
   category?: string;
   hsnCode?: string;
   costPrice?: number;

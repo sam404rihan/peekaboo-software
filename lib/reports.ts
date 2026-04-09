@@ -9,10 +9,12 @@ import {
   Timestamp,
 } from "firebase/firestore";
 import type { InvoiceDoc, InventoryLogDoc, UnifiedCsvRow } from "@/lib/models";
+import { COLLECTIONS } from "@/lib/models";
 import { toInvoiceDoc } from "@/lib/invoices";
 import { listProducts } from "@/lib/products";
 import { listCustomers } from "@/lib/customers";
 import { db } from "@/lib/firebase";
+import { splitInclusive } from "@/lib/tax";
 
 /* ======================================================
    TYPES
@@ -28,6 +30,28 @@ export type MovementRow = {
   qtyIn: number;
   qtyOut: number;
   net: number;
+};
+
+export type AgingBucket = '0-30' | '31-60' | '61-90' | '90+';
+
+export type AgingRow = {
+  productId: string;
+  name: string;
+  sku: string;
+  category?: string;
+  currentStock: number;
+  unitPrice: number;
+  stockValue: number;
+  lastInboundDate: string | null;
+  daysAged: number;
+  bucket: AgingBucket;
+};
+
+export type AgingSummary = {
+  bucket: AgingBucket;
+  productCount: number;
+  totalQty: number;
+  totalValue: number;
 };
 
 /* ======================================================
@@ -66,7 +90,7 @@ export async function listInvoicesInRange(
 ): Promise<InvoiceDoc[]> {
   if (!db) return [];
   const qy = query(
-    collection(db, "Invoices"),
+    collection(db, COLLECTIONS.invoices),
     where("issuedAt", ">=", fromIso),
     where("issuedAt", "<=", toIso),
     orderBy("issuedAt", "asc")
@@ -80,7 +104,7 @@ export async function listInvoicesInRange(
 export async function listInventoryLogsInRange(fromIso: string, toIso: string) {
   if (!db) return [];
   const qy = query(
-    collection(db, "InventoryLogs"),
+    collection(db, COLLECTIONS.inventoryLogs),
     where("createdAt", ">=", tsFromIso(fromIso)),
     where("createdAt", "<=", tsFromIso(toIso)),
     orderBy("createdAt", "asc")
@@ -157,12 +181,6 @@ function formatGstDate(iso: string): string {
     .replace(/ /g, "-");
 }
 
-function splitInclusive(price: number, taxRatePct: number) {
-  const r = (taxRatePct || 0) / 100;
-  if (r <= 0) return { base: price, gst: 0 };
-  const base = price / (1 + r);
-  return { base, gst: price - base };
-}
 
 /* ======================================================
    GSTR-1 CSV BUILDERS
@@ -452,22 +470,32 @@ export async function buildAccountingRows(
   fromIso: string,
   toIso: string
 ): Promise<UnifiedCsvRow[]> {
-  const csv = await buildAccountingCsv(fromIso, toIso);
-  return csv
-    .split("\n")
-    .slice(1)
-    .map((l) => {
-      const [date, inv, sku, hsn, tax, , payment] = l.split(",");
-      return {
+  // Re-derive directly from source data to avoid fragile CSV re-parsing
+  const [invoices, products] = await Promise.all([
+    listInvoicesInRange(fromIso, toIso),
+    listProducts(),
+  ]);
+  const pmap = new Map(products.map((p) => [p.id, p]));
+  const rows: UnifiedCsvRow[] = [];
+  for (const inv of invoices) {
+    for (const item of inv.items) {
+      const prod = pmap.get(item.productId);
+      if (!prod) continue;
+      const value = item.unitPrice * item.quantity;
+      const rate = (item.taxRatePct || 0) / 100;
+      const tax = rate > 0 ? value - value / (1 + rate) : 0;
+      rows.push({
         reportType: "ACCOUNTING",
-        date,
-        invoiceNumber: inv,
-        sku,
-        hsn,
-        taxAmount: Number(tax),
-        paymentMode: payment,
-      };
-    });
+        date: inv.issuedAt.slice(0, 10),
+        invoiceNumber: inv.invoiceNumber,
+        sku: prod.sku,
+        hsn: prod.hsnCode,
+        taxAmount: Math.round(tax * 100) / 100,
+        paymentMode: inv.paymentMethod,
+      });
+    }
+  }
+  return rows;
 }
 
 export async function buildGstr1B2bRows(
@@ -508,19 +536,29 @@ export async function buildGstr1B2clRows(
   fromIso: string,
   toIso: string
 ): Promise<UnifiedCsvRow[]> {
-  const csv = await buildGstr1B2clCsv(fromIso, toIso);
-  return csv
-    .split("\n")
-    .slice(1)
-    .map((l) => {
-      const [rate, , taxableValue, , gstin] = l.split(",");
-      return {
-        reportType: "GSTR1_B2CL",
-        gstin,
-        taxRate: Number(rate),
-        taxableValue: Number(taxableValue),
-      };
-    });
+  // Re-derive directly — rows are pushed as ["", rate, taxable, "", ""]
+  const [invoices, customers] = await Promise.all([
+    listInvoicesInRange(fromIso, toIso),
+    listCustomers(),
+  ]);
+  const customerMap = new Map(customers.map((c) => [c.id, c]));
+  const rateMap = new Map<number, number>();
+  for (const inv of invoices) {
+    if (inv.grandTotal <= 25000) continue;
+    const cust = inv.customerId ? customerMap.get(inv.customerId) : undefined;
+    if (cust?.gstin && GSTIN_REGEX.test(cust.gstin.trim().toUpperCase())) continue;
+    for (const item of inv.items) {
+      const rate = Number(item.taxRatePct || 0);
+      if (rate <= 0) continue;
+      const { base } = splitInclusive(item.unitPrice * item.quantity, rate);
+      rateMap.set(rate, (rateMap.get(rate) || 0) + base);
+    }
+  }
+  return Array.from(rateMap.entries()).map(([taxRate, taxableValue]) => ({
+    reportType: "GSTR1_B2CL" as const,
+    taxRate,
+    taxableValue: Math.round(taxableValue * 100) / 100,
+  }));
 }
 
 export async function buildGstr1HsnRows(
@@ -702,4 +740,150 @@ export function aggregatePaymentModes(
     method,
     amount,
   }));
+}
+
+/* ======================================================
+   INVENTORY AGING
+====================================================== */
+
+function toBucket(days: number): AgingBucket {
+  if (days <= 30) return '0-30';
+  if (days <= 60) return '31-60';
+  if (days <= 90) return '61-90';
+  return '90+';
+}
+
+export async function aggregateInventoryAging(opts?: { category?: string }): Promise<{ rows: AgingRow[]; summary: AgingSummary[] }> {
+  if (!db) return { rows: [], summary: [] };
+
+  // Fetch all products and all inventory logs
+  const [products, logSnap] = await Promise.all([
+    listProducts(),
+    getDocs(query(collection(db, COLLECTIONS.inventoryLogs), orderBy("createdAt", "asc"))),
+  ]);
+
+  // Build map of latest inbound date per product
+  const lastInbound = new Map<string, Date>();
+  for (const d of logSnap.docs) {
+    const data = d.data() as any;
+    const qty = Number(data.quantityChange ?? 0);
+    if (qty <= 0) continue; // only inbound movements
+    const pid = data.productId as string;
+    const ts = data.createdAt;
+    const date = ts instanceof Timestamp ? ts.toDate() : new Date(ts);
+    const prev = lastInbound.get(pid);
+    if (!prev || date > prev) lastInbound.set(pid, date);
+  }
+
+  const now = new Date();
+  const rows: AgingRow[] = [];
+
+  for (const p of products) {
+    if (p.stock <= 0) continue;
+    if (opts?.category && (p.category || '') !== opts.category) continue;
+
+    const inDate = lastInbound.get(p.id!) ?? (p.createdAt ? new Date(p.createdAt) : now);
+    const daysAged = Math.max(0, Math.floor((now.getTime() - inDate.getTime()) / (24 * 60 * 60 * 1000)));
+    const stockValue = Math.round(p.unitPrice * p.stock * 100) / 100;
+
+    rows.push({
+      productId: p.id!,
+      name: p.name,
+      sku: p.sku,
+      category: p.category,
+      currentStock: p.stock,
+      unitPrice: p.unitPrice,
+      stockValue,
+      lastInboundDate: inDate.toISOString(),
+      daysAged,
+      bucket: toBucket(daysAged),
+    });
+  }
+
+  rows.sort((a, b) => b.daysAged - a.daysAged);
+
+  // Build summary by bucket
+  const bucketOrder: AgingBucket[] = ['0-30', '31-60', '61-90', '90+'];
+  const summaryMap = new Map<AgingBucket, AgingSummary>(
+    bucketOrder.map(b => [b, { bucket: b, productCount: 0, totalQty: 0, totalValue: 0 }])
+  );
+  for (const r of rows) {
+    const s = summaryMap.get(r.bucket)!;
+    s.productCount++;
+    s.totalQty += r.currentStock;
+    s.totalValue += r.stockValue;
+  }
+
+  return { rows, summary: bucketOrder.map(b => summaryMap.get(b)!) };
+}
+
+/* ======================================================
+   STAFF REPORT
+====================================================== */
+
+export type StaffRow = {
+  cashierUserId: string;
+  cashierName: string;
+  invoiceCount: number;
+  total: number;
+  voidCount: number;
+};
+
+export async function aggregateByStaff(fromIso: string, toIso: string): Promise<StaffRow[]> {
+  const invoices = await listInvoicesInRange(fromIso, toIso);
+  const map = new Map<string, StaffRow>();
+  for (const inv of invoices) {
+    const key = inv.cashierUserId;
+    const existing = map.get(key) ?? {
+      cashierUserId: inv.cashierUserId,
+      cashierName: inv.cashierName || inv.cashierUserId,
+      invoiceCount: 0,
+      total: 0,
+      voidCount: 0,
+    };
+    if (inv.status === 'void') {
+      existing.voidCount++;
+    } else {
+      existing.invoiceCount++;
+      existing.total += inv.grandTotal;
+    }
+    map.set(key, existing);
+  }
+  return Array.from(map.values()).sort((a, b) => b.total - a.total);
+}
+
+/* ======================================================
+   BRAND REPORT
+====================================================== */
+
+export type BrandRow = {
+  brand: string;
+  invoiceCount: number;
+  unitsSold: number;
+  total: number;
+};
+
+export async function aggregateByBrand(fromIso: string, toIso: string): Promise<BrandRow[]> {
+  const [invoices, products] = await Promise.all([
+    listInvoicesInRange(fromIso, toIso),
+    listProducts(),
+  ]);
+  const brandMap = new Map(products.map(p => [p.id, p.brand || 'Unbranded']));
+  const map = new Map<string, BrandRow>();
+  for (const inv of invoices) {
+    if (inv.status === 'void') continue;
+    const seenBrandsInThisInvoice = new Set<string>();
+    for (const item of inv.items) {
+      const brand = brandMap.get(item.productId) ?? 'Unbranded';
+      const existing = map.get(brand) ?? { brand, invoiceCount: 0, unitsSold: 0, total: 0 };
+      existing.unitsSold += item.quantity;
+      existing.total += item.unitPrice * item.quantity - (item.discountAmount ?? 0);
+      if (!seenBrandsInThisInvoice.has(brand)) {
+        existing.invoiceCount++;
+        seenBrandsInThisInvoice.add(brand);
+      }
+      map.set(brand, existing);
+    }
+  }
+  return Array.from(map.values()).sort((a, b) => b.total - a.total);
 }

@@ -19,8 +19,8 @@ const beVietnam = Be_Vietnam_Pro({
 });
 
 export const metadata: Metadata = {
-  title: "Peekaboo Miniclub",
-  description: "Kids store at Katapadi",
+  title: "Komfort",
+  description: "POS with inventory, billing, and offline resilience",
 };
 
 export default function RootLayout({

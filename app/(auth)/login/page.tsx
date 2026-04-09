@@ -2,7 +2,7 @@ import { LoginForm } from "@/components/auth/login-form";
 import { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Sign In | Peekaboo POS",
+  title: "Sign In | Komfort POS",
   description: "Sign in to manage inventory, sales, and your POS network.",
 };
 
@@ -29,7 +29,7 @@ export default function LoginPage() {
             <div className="w-11 h-11 rounded-2xl bg-[#b7102a] flex items-center justify-center shadow-lg shadow-red-900/50">
               <span className="material-symbols-outlined text-white text-[22px]">point_of_sale</span>
             </div>
-            <span className="text-white text-xl font-black tracking-tight">Peekaboo</span>
+            <span className="text-white text-xl font-black tracking-tight">Komfort</span>
           </div>
         </div>
 

@@ -20,7 +20,7 @@ export type OfflineOp = {
   error?: string;
 };
 
-const DB_NAME = "peekaboo_offline_v1";
+const DB_NAME = "komfort_offline_v1";
 const STORE_NAME = "ops";
 
 function openDb(): Promise<IDBDatabase> {

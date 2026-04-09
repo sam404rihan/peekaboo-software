@@ -33,6 +33,7 @@ export interface CustomerDoc extends BaseDoc {
 export interface ProductDoc extends BaseDoc {
   name: string;
   sku: string; // internal SKU
+  brand?: string; // brand / manufacturer name
   category?: string;
   hsnCode?: string; // HSN/SAC code for GST
   unitPrice: number; // stored as number in smallest currency unit? (decide) currently decimal number
@@ -180,6 +181,8 @@ export interface SettingsDoc extends BaseDoc {
   showTaxLine?: boolean; // show GST line on receipt totals
   googleReviewUrl?: string; // link to Google review page
   showReviewLink?: boolean; // whether to show review link/QR
+  receiptTitle?: string; // e.g. "Tax Invoice", "Invoice", "Receipt"
+  defaultPlaceOfSupply?: string; // default state code, e.g. "29" for Karnataka
 }
 
 // Exchange & Refunds
@@ -219,6 +222,22 @@ export interface RefundDoc extends BaseDoc {
   createdByUserId: string;
 }
 
+export interface CouponDoc extends BaseDoc {
+  code: string; // uppercase unique code e.g. "SAVE10"
+  description?: string;
+  discountType: 'percentage' | 'amount';
+  discountValue: number; // % or flat ₹ amount
+  maxDiscountAmount?: number; // cap for percentage discounts e.g. max ₹200 off
+  minOrderValue?: number; // minimum cart total to apply
+  maxUses?: number; // 0 / undefined = unlimited
+  usedCount: number;
+  active: boolean;
+  startsAt?: string; // ISO date string — coupon not valid before this date
+  expiresAt?: string; // ISO date string
+  applicableCategories?: string[]; // if set, discount applies only to items in these categories
+  autoApply?: boolean; // if true, applies automatically at checkout — no code entry needed
+}
+
 // Collection name constants (helps avoid typos)
 export const COLLECTIONS = {
   users: 'Users',
@@ -234,6 +253,7 @@ export const COLLECTIONS = {
   settings: 'Settings',
   exchanges: 'Exchanges',
   refunds: 'Refunds',
+  coupons: 'Coupons',
 } as const;
 
 // Common product categories for initial UI; can be extended in Settings later

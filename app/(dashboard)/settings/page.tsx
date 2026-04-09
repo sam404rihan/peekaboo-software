@@ -14,7 +14,8 @@ type TabKey =
   | "audit"
   | "offers"
   | "offline"
-  | "receive";
+  | "receive"
+  | "coupons";
 
 interface TabItem {
   key: TabKey;
@@ -32,6 +33,7 @@ const TAB_CONFIG: Record<TabKey, string> = {
   offline: "./offline-queue/page",
   audit: "./audit-trail/page",
   receive: "./receive/page",
+  coupons: "./coupons/page",
 };
 
 export default function SettingsIndexPage() {
@@ -52,7 +54,10 @@ export default function SettingsIndexPage() {
       { key: "receive", label: "Receive Stock", icon: "inventory_2" },
       { key: "inventory", label: "Inventory Logs", icon: "history" },
       { key: "audit", label: "Audit Log", icon: "manage_history" },
-      ...(role === "admin" ? [{ key: "offers" as TabKey, label: "Active Offers", icon: "local_offer" }] : []),
+      ...(role === "admin" ? [
+        { key: "offers" as TabKey, label: "Active Offers", icon: "local_offer" },
+        { key: "coupons" as TabKey, label: "Coupon Codes", icon: "confirmation_number" },
+      ] : []),
       { key: "offline", label: "Sync Queue", icon: "cloud_sync" },
     ],
     [role]

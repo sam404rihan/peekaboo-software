@@ -82,6 +82,8 @@ function num(row: Record<string, any>, ...keys: string[]): number {
 //   - Writes in Firestore batches (max 450 ops/batch) for speed & reliability.
 // ----------------------------------------------------------------
 export async function processInventoryExcel(file: File): Promise<BulkUploadResult> {
+  if (!db) throw new Error("Firestore not initialized");
+  const dbx = db;
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
 
@@ -197,7 +199,7 @@ export async function processInventoryExcel(file: File): Promise<BulkUploadResul
         // Query in chunks of 30 (Firestore 'in' limit).
         // -------------------------------------------------------
         const skuList = Array.from(itemMap.keys());
-        const productsCol = collection(db!, COLLECTIONS.products);
+        const productsCol = collection(dbx, COLLECTIONS.products);
 
         const existingBySkU = new Map<string, string>(); // sku → docId
 
@@ -219,13 +221,13 @@ export async function processInventoryExcel(file: File): Promise<BulkUploadResul
         // SET stock directly — idempotent, safe to re-upload.
         // -------------------------------------------------------
         const MAX_OPS = 450;
-        let batch = writeBatch(db!);
+        let batch = writeBatch(dbx);
         let opsInBatch = 0;
 
         const flushBatch = async () => {
           if (opsInBatch > 0) {
             await batch.commit();
-            batch = writeBatch(db!);
+            batch = writeBatch(dbx);
             opsInBatch = 0;
           }
         };
@@ -248,7 +250,7 @@ export async function processInventoryExcel(file: File): Promise<BulkUploadResul
               // ---- UPDATE: INCREMENT stock by the qty in this file ----
               // prev stock + qty received in this Excel = new stock
               const docId = existingBySkU.get(sku)!;
-              const ref = doc(db!, COLLECTIONS.products, docId);
+              const ref = doc(dbx, COLLECTIONS.products, docId);
 
               const updates: Record<string, any> = {
                 updatedAt: now,

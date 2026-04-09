@@ -24,6 +24,7 @@ export function ProductForm({ mode, initial, onSaved }: ProductFormProps) {
     mrp: initial?.mrp,
     stock: initial?.stock ?? 0,
     active: initial?.active ?? true,
+    brand: initial?.brand,
     category: initial?.category,
     hsnCode: initial?.hsnCode,
     costPrice: initial?.costPrice,
@@ -141,6 +142,15 @@ export function ProductForm({ mode, initial, onSaved }: ProductFormProps) {
               value={form.sku} 
               onChange={(e) => update("sku", e.target.value)} 
               placeholder="e.g., TOY-CR-012" 
+            />
+          </div>
+          <div className="space-y-2">
+            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Brand</label>
+            <input
+              className="w-full h-12 bg-white border-0 rounded-xl px-4 text-sm font-bold text-slate-700 shadow-sm outline-none ring-1 ring-slate-200/50 focus:ring-red-300 placeholder:text-slate-300 placeholder:font-medium transition-all"
+              value={form.brand ?? ""}
+              onChange={(e) => update("brand", e.target.value || undefined)}
+              placeholder="e.g., Funskool"
             />
           </div>
           <div className="space-y-2">

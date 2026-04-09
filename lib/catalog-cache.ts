@@ -11,7 +11,7 @@ type CachedProduct = {
   taxRatePct?: number;
 };
 
-const DB_NAME = 'peekaboo_catalog_v1';
+const DB_NAME = 'komfort_catalog_v1';
 const STORE = 'products';
 
 function openDb(): Promise<IDBDatabase> {
@@ -21,10 +21,6 @@ function openDb(): Promise<IDBDatabase> {
       const db = req.result;
       if (!db.objectStoreNames.contains(STORE)) {
         db.createObjectStore(STORE, { keyPath: 'id' });
-        const skuIndex = (db.transaction as any)?.objectStore?.(STORE)?.createIndex;
-        try {
-          db.createObjectStore; // no-op to silence TS isolated modules
-        } catch {}
       }
     };
     req.onsuccess = () => resolve(req.result);

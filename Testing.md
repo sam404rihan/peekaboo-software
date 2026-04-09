@@ -1,4 +1,4 @@
-# Peekaboo POS – Smoke Test and Role-based Testing Brief
+# Komfort POS – Smoke Test and Role-based Testing Brief
 
 Use this guide to validate the full workflow quickly (Smoke Test) and then thoroughly (role-based feature-wise). It reflects the latest flows: 80mm receipt printing, direct barcode label printing (50×25 mm, 1 barcode per label), transactional stock rules, and the Audit Trail.
 

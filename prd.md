@@ -1,7 +1,7 @@
-# Product Requirements Document (PRD) – Peekaboo POS
+# Product Requirements Document (PRD) – Komfort POS
 
 ## 1. Executive Summary
-**Peekaboo POS** is a Point of Sale (POS) solution tailored for retail businesses requiring a reliable, fast, and feature-rich system. The product bridges the gap between traditional offline registers and modern cloud-based analytics, ensuring businesses can operate even without internet connectivity while maintaining a central source of truth in the cloud.
+**Komfort POS** is a Point of Sale (POS) solution tailored for retail businesses requiring a reliable, fast, and feature-rich system. The product bridges the gap between traditional offline registers and modern cloud-based analytics, ensuring businesses can operate even without internet connectivity while maintaining a central source of truth in the cloud.
 
 ## 2. Product Vision & Goals
 - **Product Vision**: To provide a professional-grade retail management system that is as simple as it is powerful.

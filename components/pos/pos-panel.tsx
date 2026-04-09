@@ -1,12 +1,11 @@
 "use client";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { ProductDoc } from "@/lib/models";
+import type { ProductDoc, CouponDoc } from "@/lib/models";
 import { decodeBarcode } from "@/lib/barcodes";
 import { findProductBySKU, listProducts } from "@/lib/products";
 import { saveProductsToCache, getCachedProducts, findCachedBySKU } from "@/lib/catalog-cache";
 import { checkoutCart } from "@/lib/pos";
-import { listActiveOffers } from "@/lib/offers";
-import type { OfferDoc } from "@/lib/models";
+import { validateCoupon, markCouponUsed, listAutoApplyCoupons, type CouponCartItem } from "@/lib/coupons";
 import { findCustomerByPhone, createCustomer } from "@/lib/customers";
 import { useAuth } from "@/components/auth/auth-provider";
 import { cn } from "@/lib/utils";
@@ -29,7 +28,6 @@ export function PosPanel() {
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card' | 'upi'>('cash');
   const [paymentReferenceId, setPaymentReferenceId] = useState("");
   const { user } = useAuth();
-  const [offers, setOffers] = useState<OfferDoc[]>([]);
   const [custPhone, setCustPhone] = useState("");
   const [custName, setCustName] = useState("");
   const [custEmail, setCustEmail] = useState("");
@@ -38,6 +36,66 @@ export function PosPanel() {
   const [custChecking, setCustChecking] = useState(false);
   const phoneLookupSeq = useRef(0);
   const [busy, setBusy] = useState(false);
+  const [couponInput, setCouponInput] = useState("");
+  const [couponApplied, setCouponApplied] = useState<{ id: string; code: string; discountAmount: number; autoApplied?: boolean } | null>(null);
+  const [couponChecking, setCouponChecking] = useState(false);
+  const autoApplyCoupons = useRef<CouponDoc[]>([]);
+
+  // Load auto-apply coupons once
+  useEffect(() => {
+    listAutoApplyCoupons().then(c => { autoApplyCoupons.current = c; }).catch(() => {});
+  }, []);
+
+  // Auto-apply best matching group coupon when cart changes (only if no manual coupon)
+  // Validates locally against cached coupon data — no extra Firestore reads on every cart change
+  useEffect(() => {
+    setCouponApplied(prev => {
+      if (prev && !prev.autoApplied) return prev; // manual coupon takes priority
+      if (!autoApplyCoupons.current.length || !cart.length) return null;
+
+      const now = new Date();
+      const cartItems: CouponCartItem[] = cart.map(l => ({
+        unitPrice: l.product.unitPrice,
+        quantity: l.qty,
+        lineTotal: l.product.unitPrice * l.qty,
+        category: l.product.category,
+      }));
+      const cartTotal = cart.reduce((s, l) => s + l.product.unitPrice * l.qty, 0);
+
+      let best: { id: string; code: string; discountAmount: number } | null = null;
+
+      for (const c of autoApplyCoupons.current) {
+        if (!c.active) continue;
+        if (c.startsAt && new Date(c.startsAt) > now) continue;
+        if (c.expiresAt && new Date(c.expiresAt) < now) continue;
+        if (c.maxUses && c.usedCount >= c.maxUses) continue;
+        if (c.minOrderValue && cartTotal < c.minOrderValue) continue;
+
+        const cats = c.applicableCategories;
+        let eligibleTotal = cartTotal;
+        if (cats && cats.length > 0) {
+          eligibleTotal = cartItems
+            .filter(item => item.category && cats.includes(item.category))
+            .reduce((sum, item) => sum + item.lineTotal, 0);
+          if (eligibleTotal <= 0) continue;
+        }
+
+        let discount = c.discountType === "percentage"
+          ? Math.round(eligibleTotal * c.discountValue / 100 * 100) / 100
+          : Math.min(c.discountValue, eligibleTotal);
+        if (c.discountType === "percentage" && c.maxDiscountAmount) {
+          discount = Math.min(discount, c.maxDiscountAmount);
+        }
+
+        if (!best || discount > best.discountAmount) {
+          best = { id: c.id!, code: c.code, discountAmount: discount };
+        }
+      }
+
+      if (best) return { ...best, autoApplied: true };
+      return null;
+    });
+  }, [cart]);
 
   useEffect(() => { inputRef.current?.focus(); }, []);
   useEffect(() => {
@@ -58,7 +116,6 @@ export function PosPanel() {
     load();
   }, []);
   
-  useEffect(() => { listActiveOffers().then(setOffers).catch(() => undefined); }, []);
 
   const DRAFT_KEY_V2 = "pos.cart.v2";
   const loadedRef = useRef(false);
@@ -109,7 +166,8 @@ export function PosPanel() {
   }, []);
   const subTotal = useMemo(() => cart.reduce((sum, l) => sum + (l.product.unitPrice * l.qty - lineDiscount(l)), 0), [cart, lineDiscount]);
   const billDiscComputed = useMemo(() => (billDiscountMode === 'amount' ? billDiscount : (subTotal * billDiscount) / 100), [billDiscountMode, billDiscount, subTotal]);
-  const total = useMemo(() => Math.max(0, subTotal - billDiscComputed), [subTotal, billDiscComputed]);
+  const couponDiscount = couponApplied?.discountAmount ?? 0;
+  const total = useMemo(() => Math.max(0, subTotal - billDiscComputed - couponDiscount), [subTotal, billDiscComputed, couponDiscount]);
 
   function showToast(type: 'error' | 'success', message: string) {
     const id = Date.now();
@@ -192,6 +250,30 @@ export function PosPanel() {
     return () => clearTimeout(t);
   }, [custPhone]);
 
+  async function applyCoupon() {
+    const code = couponInput.trim();
+    if (!code) return;
+    setCouponChecking(true);
+    try {
+      const cartItemsForCoupon: CouponCartItem[] = cart.map(l => ({
+        unitPrice: l.product.unitPrice,
+        quantity: l.qty,
+        lineTotal: l.product.unitPrice * l.qty - lineDiscount(l),
+        category: l.product.category,
+      }));
+      const result = await validateCoupon(code, subTotal - billDiscComputed, cartItemsForCoupon);
+      if (!result.valid) { showToast('error', result.reason); return; }
+      setCouponApplied({ id: result.coupon.id!, code: result.coupon.code, discountAmount: result.discountAmount });
+      const scopeNote = result.eligibleTotal < (subTotal - billDiscComputed)
+        ? ` (on eligible items ₹${result.eligibleTotal.toFixed(2)})` : "";
+      showToast('success', `Coupon applied: -₹${result.discountAmount.toFixed(2)}${scopeNote}`);
+    } catch (e) {
+      showToast('error', `Coupon error: ${e instanceof Error ? e.message : String(e)}`);
+    } finally {
+      setCouponChecking(false);
+    }
+  }
+
   async function onCheckout() {
     if (cart.length === 0) return;
     setBusy(true);
@@ -209,17 +291,42 @@ export function PosPanel() {
       }
       if (!navigator.onLine) {
         const id = `op-${Date.now()}`;
-        const payload = { lines: cart.map(l => ({ productId: l.product.id!, name: l.product.name, qty: l.qty, unitPrice: l.product.unitPrice, lineDiscount: lineDiscount(l), taxRatePct: l.product.taxRatePct })), billDiscount: billDiscComputed, paymentMethod, paymentReferenceId: paymentReferenceId.trim() || undefined, cashierUserId: user?.uid, cashierName: user?.email, customerId, customerName: custName.trim() || undefined, opId: id };
+        const payload = { 
+          lines: cart.map(l => ({ 
+            productId: l.product.id!, 
+            name: l.product.name, 
+            qty: l.qty, 
+            unitPrice: l.product.unitPrice, 
+            lineDiscount: lineDiscount(l), 
+            taxRatePct: l.product.taxRatePct ?? 0  // Ensure tax rate is always defined
+          })), 
+          billDiscount: billDiscComputed, 
+          paymentMethod, 
+          paymentReferenceId: paymentReferenceId.trim() || undefined, 
+          cashierUserId: user?.uid, 
+          cashierName: user?.email, 
+          customerId, 
+          customerName: custName.trim() || undefined, 
+          opId: id 
+        };
         await (await import("@/lib/offline")).enqueueOp({ id, type: 'checkout', payload, createdAt: new Date().toISOString(), attempts: 0 });
       } else {
         const newInvoiceId = await checkoutCart({
-          lines: cart.map(l => ({ productId: l.product.id!, name: l.product.name, qty: l.qty, unitPrice: l.product.unitPrice, lineDiscount: lineDiscount(l), taxRatePct: l.product.taxRatePct }) as any),
-          billDiscount: billDiscComputed, paymentMethod, paymentReferenceId: paymentReferenceId.trim() || undefined, cashierUserId: user?.uid, cashierName: user?.email ?? undefined, customerId, customerName: custName.trim() || undefined, opId: `op-${Date.now()}`,
+          lines: cart.map(l => ({
+            productId: l.product.id!,
+            name: l.product.name,
+            qty: l.qty,
+            unitPrice: l.product.unitPrice,
+            lineDiscount: lineDiscount(l),
+            taxRatePct: l.product.taxRatePct ?? 0
+          }) as any),
+          billDiscount: billDiscComputed + couponDiscount, paymentMethod, paymentReferenceId: paymentReferenceId.trim() || undefined, cashierUserId: user?.uid, cashierName: user?.email ?? undefined, customerId, customerName: custName.trim() || undefined, opId: `op-${Date.now()}`,
         });
+        if (couponApplied) { markCouponUsed(couponApplied.id).catch(() => {}); }
         try { window.open(`/invoices/receipt/${newInvoiceId}?autoclose=1&confirm=1`, '_blank'); } catch { }
       }
       showToast('success', 'Checkout complete!');
-      setCart([]); setCustPhone(""); setCustName("");
+      setCart([]); setCustPhone(""); setCustName(""); setCouponApplied(null); setCouponInput("");
       try { localStorage.removeItem(DRAFT_KEY_V2); } catch { }
     } catch (e) {
       showToast('error', `Checkout failed: ${e instanceof Error ? e.message : String(e)}`);
@@ -307,9 +414,6 @@ export function PosPanel() {
                 <h2 className="text-xl font-extrabold text-slate-900 tracking-tight leading-none mb-1">Shopping Cart</h2>
                 <span className="text-[10px] font-black uppercase tracking-widest text-[#a65b62]">POS Active Session</span>
              </div>
-             <button className="w-8 h-8 bg-slate-50 text-slate-400 rounded-full flex items-center justify-center hover:bg-slate-100 hover:text-slate-800 transition-colors">
-                <span className="material-symbols-outlined text-[16px]">close</span>
-             </button>
           </div>
 
           {/* Cart Lines */}
@@ -369,6 +473,38 @@ export function PosPanel() {
              </div>
              <div className="flex justify-between items-center text-sm font-bold text-slate-500">
                 <span>Total GST</span><span>{cart.length > 0 ? "Included" : "—"}</span>
+             </div>
+             {/* Coupon Code */}
+             <div>
+               {couponApplied ? (
+                 <div className="flex items-center justify-between bg-emerald-50 rounded-xl px-3 py-2">
+                   <div className="flex items-center gap-2">
+                     <span className="material-symbols-outlined text-emerald-600 text-[16px]">confirmation_number</span>
+                     <span className="text-[11px] font-black text-emerald-700 uppercase">{couponApplied.autoApplied ? "Auto Discount" : couponApplied.code}</span>
+                     {couponApplied.autoApplied && <span className="text-[10px] font-bold bg-violet-100 text-violet-700 px-1.5 py-0.5 rounded-full">Auto</span>}
+                     <span className="text-[11px] font-bold text-emerald-600">-₹{couponApplied.discountAmount.toFixed(2)}</span>
+                   </div>
+                   <button onClick={() => { setCouponApplied(null); setCouponInput(""); }} className="text-[11px] font-bold text-slate-400 hover:text-red-600">Remove</button>
+                 </div>
+               ) : (
+                 <div className="flex gap-2">
+                   <input
+                     type="text"
+                     placeholder="Coupon code"
+                     value={couponInput}
+                     onChange={(e) => setCouponInput(e.target.value.toUpperCase())}
+                     onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); applyCoupon(); } }}
+                     className="flex-1 h-9 bg-white border border-slate-200 rounded-xl px-3 text-sm font-bold text-slate-700 uppercase outline-none focus:ring-2 focus:ring-red-200"
+                   />
+                   <button
+                     onClick={applyCoupon}
+                     disabled={!couponInput.trim() || couponChecking}
+                     className="h-9 px-4 rounded-xl bg-slate-800 text-white text-[11px] font-bold disabled:opacity-40"
+                   >
+                     {couponChecking ? "..." : "Apply"}
+                   </button>
+                 </div>
+               )}
              </div>
              <div className="flex justify-between items-center text-sm font-bold text-slate-500">
                 <span>Discounts</span><span className="text-[#b7102a]">-₹{(subTotal - total).toLocaleString()}</span>

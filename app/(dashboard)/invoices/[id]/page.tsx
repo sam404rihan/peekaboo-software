@@ -3,7 +3,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/components/auth/auth-provider";
 import { useParams, useRouter } from "next/navigation";
 import { db } from "@/lib/firebase";
-import { doc, onSnapshot, updateDoc } from "firebase/firestore";
+import { doc, onSnapshot, updateDoc, runTransaction, increment, collection } from "firebase/firestore";
 import type { InvoiceDoc } from "@/lib/models";
 import { toInvoiceDoc } from "@/lib/invoices";
 import { getCustomer } from "@/lib/customers";
@@ -84,18 +84,62 @@ export default function InvoiceDetailsPage() {
       const issued = new Date(invoice.issuedAt);
       const now = new Date();
       const dayDiff = Math.floor((now.getTime() - issued.getTime()) / (24 * 60 * 60 * 1000));
-      return dayDiff <= 7;
+      return dayDiff <= 14;
     } catch { return false; }
   }, [invoice]);
 
   const handleVoid = async () => {
     if (!invoice || !id || !db) return;
+    const safeDb = db; // narrow to non-undefined for use inside async callbacks
     if (!confirm("Are you sure you want to void this invoice? This cannot be undone.")) return;
     setVoiding(true);
     try {
-      const ref = doc(db, COLLECTIONS.invoices, id);
-      await updateDoc(ref, { status: "void", updatedAt: new Date().toISOString() });
-      toast({ title: "Invoice Voided", description: `Invoice ${invoice.invoiceNumber} has been cancelled.` });
+      const voidedAt = new Date().toISOString();
+
+      // Use transaction to ensure atomicity: void invoice + restore stock + log
+      await runTransaction(safeDb, async (txn) => {
+        // 1. Update invoice status to void
+        const invoiceRef = doc(safeDb, COLLECTIONS.invoices, id);
+        txn.update(invoiceRef, { status: "void", updatedAt: voidedAt });
+
+        // 2. Restore stock for each item and create reverse inventory logs
+        for (const item of invoice.items) {
+          // Restore product stock
+          const prodRef = doc(safeDb, COLLECTIONS.products, item.productId);
+          txn.update(prodRef, {
+            stock: increment(item.quantity),
+            updatedAt: voidedAt
+          });
+
+          // Create reverse inventory log (type: 'adjustment' = stock restored, reason clarifies it's a void)
+          const logRef = doc(collection(safeDb, COLLECTIONS.inventoryLogs));
+          txn.set(logRef, {
+            type: 'adjustment',
+            productId: item.productId,
+            quantityChange: item.quantity,
+            relatedInvoiceId: id,
+            reason: 'Invoice voided — stock restored',
+            userId: user?.uid || '',
+            createdAt: voidedAt,
+            updatedAt: voidedAt
+          });
+        }
+      });
+      
+      toast({ title: "Invoice Voided", description: `Invoice ${invoice.invoiceNumber} has been cancelled and stock restored.` });
+      
+      // Fire-and-forget alert email to admin
+      fetch("/api/notify/void", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          invoiceNumber: invoice.invoiceNumber,
+          invoiceId: id,
+          grandTotal: invoice.grandTotal,
+          voidedBy: user?.displayName || user?.email || "Unknown",
+          voidedAt,
+        }),
+      }).catch(() => {/* notification is best-effort */});
     } catch (err: any) {
       toast({ title: "Failed to Void", description: err.message, variant: "destructive" });
     } finally {
@@ -104,7 +148,11 @@ export default function InvoiceDetailsPage() {
   };
 
   const handlePrint = () => {
-    window.open(`/invoices/receipt/${id}`, "_blank");
+    window.open(`/invoices/receipt/${id}?mode=print`, "_blank");
+  };
+
+  const handleDownloadPdf = () => {
+    window.open(`/invoices/receipt/${id}?mode=download`, "_blank");
   };
 
   if (loading) return <div className="p-8 text-slate-400 font-medium tracking-wide flex items-center gap-3"><span className="material-symbols-outlined animate-spin">progress_activity</span>Loading invoice...</div>;
@@ -137,10 +185,16 @@ export default function InvoiceDetailsPage() {
         {invoice && (
           <div className="flex items-center gap-3 flex-wrap">
             {invoice.status !== "void" && (role === "admin" || role === "cashier") && (
-              <button onClick={handlePrint} className="h-10 px-5 rounded-full bg-white border border-slate-200 text-slate-700 flex items-center gap-2 text-[13px] font-bold hover:bg-slate-50 shadow-sm transition-all">
-                <span className="material-symbols-outlined text-[18px]">print</span>
-                Print Receipt
-              </button>
+              <>
+                <button onClick={handleDownloadPdf} className="h-10 px-5 rounded-full bg-[#b7102a] text-white flex items-center gap-2 text-[13px] font-bold hover:bg-[#9b0e23] shadow-sm transition-all">
+                  <span className="material-symbols-outlined text-[18px]">download</span>
+                  Download PDF
+                </button>
+                <button onClick={handlePrint} className="h-10 px-5 rounded-full bg-white border border-slate-200 text-slate-700 flex items-center gap-2 text-[13px] font-bold hover:bg-slate-50 shadow-sm transition-all">
+                  <span className="material-symbols-outlined text-[18px]">print</span>
+                  Print
+                </button>
+              </>
             )}
             {canExchange && (
               <button onClick={() => window.location.href = window.location.pathname + "/exchange"} className="h-10 px-5 rounded-full bg-[#dbeafe] text-[#1e40af] border border-[#bfdbfe] flex items-center gap-2 text-[13px] font-bold hover:bg-blue-100 shadow-sm transition-all">
@@ -148,7 +202,7 @@ export default function InvoiceDetailsPage() {
                 Exchange
               </button>
             )}
-            {invoice.status !== "void" && role === "admin" && (
+            {invoice.status !== "void" && (role === "admin" || role === "cashier") && (
               <button onClick={handleVoid} disabled={voiding} className="h-10 px-5 rounded-full bg-red-50 text-[#b7102a] border border-red-200 flex items-center gap-2 text-[13px] font-bold hover:bg-red-100 shadow-sm transition-all disabled:opacity-50">
                 <span className="material-symbols-outlined text-[18px]">{voiding ? "hourglass_empty" : "block"}</span>
                 {voiding ? "Voiding..." : "Void Invoice"}

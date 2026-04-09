@@ -1,7 +1,7 @@
-# Peekaboo POS – Project Overview & Status
+# Komfort POS – Project Overview & Status
 
 ## What it is
-**Peekaboo POS** is a modern, high-performance Point of Sale (POS) system designed for retail businesses. Built using the latest web technologies, it offers a seamless, offline-first experience through Progressive Web App (PWA) capabilities. The system integrates directly with Firebase for real-time data synchronization, authentication, and secure cloud storage.
+**Komfort POS** is a modern, high-performance Point of Sale (POS) system designed for retail businesses. Built using the latest web technologies, it offers a seamless, offline-first experience through Progressive Web App (PWA) capabilities. The system integrates directly with Firebase for real-time data synchronization, authentication, and secure cloud storage.
 
 ### Key Pillars:
 - **Speed & Efficiency**: Optimized for rapid barcode scanning and quick checkouts.
