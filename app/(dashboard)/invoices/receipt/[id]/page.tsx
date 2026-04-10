@@ -1,5 +1,5 @@
 "use client";
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { useParams, useSearchParams } from "next/navigation";
 import { db } from "@/lib/firebase";
 import { doc, getDoc, getDocs, collection, query, where, documentId } from "firebase/firestore";
@@ -58,8 +58,6 @@ export default function InvoiceReceiptPage() {
   const params = useParams();
   const id = Array.isArray(params?.id) ? params.id[0] : (params?.id as string);
   const search = useSearchParams();
-  const pageRef = useRef<HTMLDivElement>(null);
-
   const [inv, setInv] = useState<InvoiceDoc | null>(null);
   const [settings, setSettings] = useState<Partial<SettingsDoc> | null>(null);
   const [products, setProducts] = useState<Record<string, ProductDoc>>({});
@@ -97,45 +95,288 @@ export default function InvoiceReceiptPage() {
   }, [id]);
 
   const downloadPdf = useCallback(async (invoiceNumber: string) => {
-    if (!pageRef.current) return;
+    if (!inv) return;
     setPdfStatus("generating");
     try {
-      const [html2canvas, { jsPDF }] = await Promise.all([
-        import("html2canvas").then(m => m.default),
-        import("jspdf"),
-      ]);
-      const el = pageRef.current;
-      const rect = el.getBoundingClientRect();
-      const canvas = await html2canvas(el, {
-        scale: 2,
-        useCORS: true,
-        backgroundColor: "#ffffff",
-        logging: false,
-        // Capture full element even if partially off-screen
-        scrollX: -window.scrollX,
-        scrollY: -window.scrollY,
-        windowWidth: Math.max(document.documentElement.scrollWidth, rect.width + rect.left + 32),
-        windowHeight: document.documentElement.scrollHeight,
-        x: 0,
-        y: 0,
-        width: el.offsetWidth,
-        height: el.offsetHeight,
+      const pdfMake = (await import("pdfmake/build/pdfmake")).default;
+      const pdfFonts = (await import("pdfmake/build/vfs_fonts")).default;
+      pdfMake.vfs = (pdfFonts as any).vfs ?? (pdfFonts as any).pdfMake?.vfs;
+
+      // ── helpers ────────────────────────────────────────────────────────────
+      const d2 = (n: number) => n.toFixed(2);
+      const fmtD = (iso: string) => new Date(iso).toLocaleDateString("en-IN", { day: "2-digit", month: "2-digit", year: "numeric" });
+      const fmtT = (iso: string) => new Date(iso).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false });
+
+      // ── per-line calcs (same formula as the HTML render) ───────────────────
+      const lcs = inv.items.map(it => {
+        const qty    = it.quantity || 0;
+        const rate   = it.unitPrice || 0;
+        const total  = round2(rate * qty);
+        const disc   = round2(Number(it.discountAmount || 0));
+        const netValue = round2(total - disc);
+        const taxPct = it.taxRatePct || 0;
+        const { gst } = splitInclusive(rate, taxPct);
+        const lineGst  = round2(gst * qty);
+        const halfRate = round2(taxPct / 2);
+        const halfAmt  = round2(lineGst / 2);
+        const prod = products[it.productId];
+        return { qty, rate, total, disc, netValue, taxPct, lineGst, halfRate, halfAmt, prod };
       });
-      const imgData = canvas.toDataURL("image/jpeg", 0.95);
-      // A4 dimensions in mm
-      const A4_W = 210;
-      const A4_H = 297;
-      const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
-      // Fit canvas image to A4 width; slice into pages
-      const pxPerMm = canvas.width / A4_W;
-      const totalHeightMm = canvas.height / pxPerMm;
-      let y = 0;
-      while (y < totalHeightMm) {
-        if (y > 0) pdf.addPage();
-        pdf.addImage(imgData, "JPEG", 0, -y, A4_W, totalHeightMm);
-        y += A4_H;
+
+      // ── totals (identical to HTML) ─────────────────────────────────────────
+      const totalQty  = lcs.reduce((s, l) => s + l.qty, 0);
+      const totalBill = round2(lcs.reduce((s, l) => s + l.total, 0));
+      const totalNet  = round2(lcs.reduce((s, l) => s + l.netValue, 0));
+      const totalCgst = round2(lcs.reduce((s, l) => s + l.halfAmt, 0));
+      const totalSgst = totalCgst;
+      const totalGst  = round2(totalCgst + totalSgst);
+      const netDiscount = round2((inv.discountTotal || 0) + lcs.reduce((s, l) => s + l.disc, 0));
+      const totalBase = round2(totalNet - totalGst);
+      const roundOff  = round2(Math.round(inv.grandTotal) - inv.grandTotal);
+      const netBill   = inv.grandTotal;
+      const wordsStr  = amountInWords(netBill);
+
+      // ── settings ───────────────────────────────────────────────────────────
+      const bizName   = settings?.businessName || "Your Store";
+      const addrLine1 = settings?.addressLine1 || "";
+      const addrLine2 = settings?.addressLine2 || "";
+      const cityStatePin = [settings?.city, settings?.state, settings?.pinCode].filter(Boolean).join(" - ");
+      const phone     = settings?.phone || "";
+      const gstin     = settings?.gstin || "";
+      const recTitle  = settings?.receiptTitle || "Tax Invoice";
+      const defPlace  = settings?.defaultPlaceOfSupply || "29";
+      const footNote  = settings?.receiptFooterNote || "";
+      const terms     = settings?.receiptTermsConditions || "";
+      const payMode   = inv.paymentMethod
+        ? inv.paymentMethod.charAt(0).toUpperCase() + inv.paymentMethod.slice(1)
+        : "";
+      const placeOfSupply = inv.placeOfSupply || defPlace;
+
+      // ── address stack (mirrors HTML address block) ─────────────────────────
+      const addrStack: any[] = [];
+      if (addrLine1) {
+        addrStack.push({ text: addrLine1, fontSize: 7 });
+        if (addrLine2) addrStack.push({ text: addrLine2, fontSize: 7 });
+        const cityLine = cityStatePin + (phone ? "  Tel.: " + phone : "");
+        if (cityLine.trim()) addrStack.push({ text: cityLine, fontSize: 7 });
+      } else if (phone) {
+        addrStack.push({ text: "Tel.: " + phone, fontSize: 7 });
       }
-      pdf.save(`Invoice-${invoiceNumber}.pdf`);
+
+      // ── pdfmake cell helpers ───────────────────────────────────────────────
+      const FS = 7;
+      const FILL_HDR = "#f5f5f5";
+      const FILL_TOT = "#fafafa";
+
+      // cell(): bare data cell
+      const cell = (text: string, align: "left"|"center"|"right" = "left", bold = false): any =>
+        ({ text, fontSize: FS, alignment: align, bold, margin: [3, 2, 3, 2] });
+
+      // hdr(): header cell (grey bg, bold, centered)
+      const hdr = (text: string, extra: any = {}): any =>
+        ({ text, fontSize: FS, bold: true, fillColor: FILL_HDR, alignment: "center", margin: [2, 2, 2, 2], ...extra });
+
+      // ph(): rowSpan/colSpan placeholder
+      const ph = (): any => ({});
+
+      // ── item body rows ─────────────────────────────────────────────────────
+      const itemRows = inv.items.map((it, idx) => {
+        const lc = lcs[idx];
+        return [
+          cell(String(idx + 1), "center"),
+          cell(lc.prod?.sku || it.productId, "center"),
+          cell(it.name),
+          cell(lc.prod?.hsnCode || "", "center"),
+          cell(d2(lc.qty), "center"),
+          cell(d2(lc.rate), "right"),
+          cell(d2(lc.total), "right"),
+          cell(d2(lc.netValue), "right"),
+          cell(d2(lc.halfRate), "center"),
+          cell(d2(lc.halfAmt), "right"),
+          cell(d2(lc.halfRate), "center"),
+          cell(d2(lc.halfAmt), "right"),
+        ];
+      });
+
+      // ── right-side bill summary (nested table inside footer cell) ──────────
+      // Mirrors the HTML nested table with a top-border on "Net Bill amount"
+      const billSummaryRows: any[] = [
+        ["Total Bill Value", d2(totalBill)],
+        ["Taxed On",         d2(totalBase)],
+        ["Net Discount",     d2(netDiscount)],
+        ["GST",              d2(totalGst)],
+        ["Round Off",        d2(roundOff)],
+      ].map(([label, val]) => [
+        { text: label, fontSize: FS, border: [false, false, false, false], margin: [3, 2, 3, 1] },
+        { text: val,   fontSize: FS, border: [false, false, false, false], alignment: "right", margin: [3, 2, 3, 1] },
+      ]);
+      // Net Bill amount row with top border
+      billSummaryRows.push([
+        { text: "Net Bill amount", fontSize: FS, bold: true, border: [false, true, false, false], margin: [3, 3, 3, 3] },
+        { text: d2(netBill),       fontSize: FS, bold: true, border: [false, true, false, false], alignment: "right", margin: [3, 3, 3, 3] },
+      ]);
+      const billSummaryTable: any = {
+        table: { widths: ["*", "auto"], body: billSummaryRows },
+        layout: { hLineWidth: (i: number, node: any) => (i === node.table.body.length - 1 ? 0.5 : 0), vLineWidth: () => 0, hLineColor: () => "#000" },
+      };
+
+      // ── THE ONE UNIFIED TABLE — mirrors exact HTML structure ───────────────
+      // 12 columns matching the HTML colgroup:
+      // Sr(3%) SKU(11%) Desc(*) HSN(8%) Qty(5%) Rate(7%) Total(7%) Net(8%) CgstR(5%) CgstA(5%) SgstR(5%) SgstA(5%)
+      // A4 content width at 28pt margins = ~539pt
+      // widths in pt: [16, 59, *, 43, 27, 38, 38, 43, 27, 27, 27, 27]  (fixed sum ≈ 372pt)
+      const COL_WIDTHS = [16, 59, "*", 43, 27, 38, 38, 43, 27, 27, 27, 27];
+
+      const tableBody: any[][] = [
+
+        // ── Row 0: Header — biz info (colSpan=6) | invoice meta (colSpan=6) ──
+        [
+          {
+            colSpan: 6,
+            stack: [
+              { text: [{ text: "Name: ", bold: true }, { text: bizName, bold: true, fontSize: 9 }], fontSize: FS },
+              ...(addrLine1 ? [
+                {
+                  columns: [
+                    { text: "Address:", fontSize: FS, width: "auto", margin: [0, 1, 4, 0] },
+                    { stack: addrStack, fontSize: FS, margin: [0, 1, 0, 0] },
+                  ],
+                },
+              ] : []),
+              { text: [{ text: "GSTIN No.: ", bold: true }, gstin || "—"], fontSize: FS, margin: [0, 2, 0, 0] },
+            ],
+            margin: [3, 4, 3, 4],
+          },
+          ph(), ph(), ph(), ph(), ph(),
+          {
+            colSpan: 6,
+            stack: [
+              { text: recTitle, bold: true, fontSize: 10, decoration: "underline", alignment: "center", margin: [0, 0, 0, 5] },
+              {
+                table: {
+                  widths: ["auto", "auto", "*"],
+                  body: [
+                    [
+                      { text: "Invoice No.", bold: true, fontSize: FS, border: [false,false,false,false], margin: [0,1,4,1] },
+                      { text: ":", fontSize: FS, border: [false,false,false,false], margin: [0,1,4,1] },
+                      { text: inv.invoiceNumber, fontSize: FS, border: [false,false,false,false], margin: [0,1,0,1] },
+                    ],
+                    [
+                      { text: "Invoice Date", bold: true, fontSize: FS, border: [false,false,false,false], margin: [0,1,4,1] },
+                      { text: ":", fontSize: FS, border: [false,false,false,false], margin: [0,1,4,1] },
+                      { text: fmtD(inv.issuedAt), fontSize: FS, border: [false,false,false,false], margin: [0,1,0,1] },
+                    ],
+                    [
+                      { text: "Transaction Time", bold: true, fontSize: FS, border: [false,false,false,false], margin: [0,1,4,1] },
+                      { text: ":", fontSize: FS, border: [false,false,false,false], margin: [0,1,4,1] },
+                      { text: fmtT(inv.issuedAt), fontSize: FS, border: [false,false,false,false], margin: [0,1,0,1] },
+                    ],
+                  ],
+                },
+                layout: "noBorders",
+              },
+            ],
+            margin: [3, 4, 3, 4],
+          },
+          ph(), ph(), ph(), ph(), ph(),
+        ],
+
+        // ── Row 1: Recipient — state code (colSpan=4) | customer (colSpan=8) ──
+        [
+          {
+            colSpan: 4,
+            text: [{ text: "Recipient State Code: ", bold: true }, placeOfSupply],
+            fontSize: FS, margin: [3, 2, 3, 2],
+          },
+          ph(), ph(), ph(),
+          {
+            colSpan: 8,
+            text: [{ text: "Customer GSTIN No./Name: ", bold: true }, inv.customerName || ""],
+            fontSize: FS, margin: [3, 2, 3, 2],
+          },
+          ph(), ph(), ph(), ph(), ph(), ph(), ph(),
+        ],
+
+        // ── Row 2: Items header row 1 (rowSpan + colSpan) ─────────────────────
+        [
+          hdr("Sr",                    { rowSpan: 2 }),
+          hdr("Stock No.",             { rowSpan: 2 }),
+          hdr("Description of Goods",  { rowSpan: 2 }),
+          hdr("HSN code",              { rowSpan: 2 }),
+          hdr("Qty",                   { rowSpan: 2 }),
+          hdr("Item Rate",             { rowSpan: 2 }),
+          hdr("Total",                 { rowSpan: 2 }),
+          hdr("Item Net Value",        { rowSpan: 2 }),
+          hdr("CGST",                  { colSpan: 2 }), ph(),
+          hdr("SGST",                  { colSpan: 2 }), ph(),
+        ],
+
+        // ── Row 3: Items header row 2 (Rate/Amt sub-labels) ───────────────────
+        [
+          ph(), ph(), ph(), ph(), ph(), ph(), ph(), ph(),
+          hdr("Rate"), hdr("Amt"), hdr("Rate"), hdr("Amt"),
+        ],
+
+        // ── Item rows ──────────────────────────────────────────────────────────
+        ...itemRows,
+
+        // ── Totals row ─────────────────────────────────────────────────────────
+        [
+          { colSpan: 4, text: "Total", bold: true, fontSize: FS, alignment: "right", fillColor: FILL_TOT, margin: [3,2,3,2] },
+          ph(), ph(), ph(),
+          { text: d2(totalQty),  bold: true, fontSize: FS, alignment: "center", fillColor: FILL_TOT, margin: [3,2,3,2] },
+          { text: "",            fontSize: FS, fillColor: FILL_TOT },
+          { text: d2(totalBill), bold: true, fontSize: FS, alignment: "right",  fillColor: FILL_TOT, margin: [3,2,3,2] },
+          { text: d2(totalNet),  bold: true, fontSize: FS, alignment: "right",  fillColor: FILL_TOT, margin: [3,2,3,2] },
+          { text: "",            fontSize: FS, fillColor: FILL_TOT },
+          { text: d2(totalCgst), bold: true, fontSize: FS, alignment: "right",  fillColor: FILL_TOT, margin: [3,2,3,2] },
+          { text: "",            fontSize: FS, fillColor: FILL_TOT },
+          { text: d2(totalSgst), bold: true, fontSize: FS, alignment: "right",  fillColor: FILL_TOT, margin: [3,2,3,2] },
+        ],
+
+        // ── Footer row: payment (colSpan=6) | bill summary (colSpan=6) ─────────
+        [
+          {
+            colSpan: 6,
+            stack: [
+              { text: [{ text: "Payment mode", bold: true }, " : ", payMode], fontSize: FS },
+              { text: [{ text: "Amount Paid",  bold: true }, " : ", d2(netBill)], fontSize: FS, margin: [0,2,0,0] },
+              { text: [{ text: "Total",        bold: true }, " : ", d2(netBill)], fontSize: FS, margin: [0,2,0,0] },
+              { text: [{ text: "Bill amount in words: ", bold: true }, wordsStr], fontSize: FS, margin: [0,5,0,0] },
+            ],
+            margin: [3, 4, 3, 4],
+          },
+          ph(), ph(), ph(), ph(), ph(),
+          {
+            colSpan: 6,
+            stack: [billSummaryTable],
+            margin: [0, 2, 0, 2],
+          },
+          ph(), ph(), ph(), ph(), ph(),
+        ],
+      ];
+
+      const docDef: any = {
+        pageSize: "A4",
+        pageMargins: [28, 28, 28, 28],
+        defaultStyle: { font: "Roboto", fontSize: FS },
+        content: [
+          {
+            table: { widths: COL_WIDTHS, body: tableBody, headerRows: 4 },
+            layout: {
+              hLineWidth: () => 0.5,
+              vLineWidth: () => 0.5,
+              hLineColor: () => "#000000",
+              vLineColor: () => "#000000",
+            },
+          },
+          ...(footNote || terms
+            ? [{ text: [footNote, terms].filter(Boolean).join("\n"), fontSize: FS, color: "#333333", margin: [0, 8, 0, 0] }]
+            : []),
+        ],
+      };
+
+      pdfMake.createPdf(docDef).download(`Invoice-${invoiceNumber}.pdf`);
       setPdfStatus("done");
       setTimeout(() => setPdfStatus("idle"), 3000);
     } catch (err) {
@@ -143,7 +384,7 @@ export default function InvoiceReceiptPage() {
       setPdfStatus("idle");
       alert("PDF generation failed. Please try printing instead.");
     }
-  }, []);
+  }, [inv, settings, products]);
 
   // Auto-download PDF when opened with ?mode=download
   useEffect(() => {
@@ -279,7 +520,6 @@ const isAutoMode = mode === "download" || mode === "print";
 
       {/* ── A4 page wrapper ── */}
       <div
-        ref={pageRef}
         style={{
           fontFamily: "Arial, sans-serif", fontSize: 11, color: "#000",
           background: "#fff", width: "210mm", minHeight: "297mm",
