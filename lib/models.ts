@@ -42,6 +42,7 @@ export interface ProductDoc extends BaseDoc {
   stock: number; // current on-hand quantity
   reorderLevel?: number; // threshold for low-stock alerts
   taxRatePct?: number; // e.g. 5 for 5%
+  thresholdPrice?: number; // if set: GST = 5% when unitPrice < thresholdPrice, else 18%
   active: boolean;
   printedCount?: number; // number of barcode labels printed
 }

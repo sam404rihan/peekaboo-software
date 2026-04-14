@@ -75,6 +75,7 @@ export default function EditProductPage() {
                   costPrice: product.costPrice,
                   reorderLevel: product.reorderLevel,
                   taxRatePct: product.taxRatePct,
+                  thresholdPrice: product.thresholdPrice,
                   mrp: product.mrp,
                 }}
                 onSaved={() => (window.location.href = "/products")}

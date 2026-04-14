@@ -28,7 +28,7 @@ npm run clean
 
 ## Environment
 
-Copy `.env.local.example` to `.env.local` and fill in the six `NEXT_PUBLIC_FIREBASE_*` variables. Without them, Firebase won't initialize and the app will show a console warning.
+Copy `.env.example` to `.env.local` and fill in the six `NEXT_PUBLIC_FIREBASE_*` variables (`API_KEY`, `AUTH_DOMAIN`, `PROJECT_ID`, `STORAGE_BUCKET`, `MESSAGING_SENDER_ID`, `APP_ID`). Without them, Firebase won't initialize and the app will show a console warning. The SMTP vars (`SMTP_HOST/PORT/USER/PASS`, `NOTIFY_ADMIN_EMAIL`) are optional — only needed for void-invoice email alerts.
 
 ## Architecture
 
@@ -55,6 +55,14 @@ Key modules:
 - `lib/reports.ts` — aggregation queries for sales, stock, movement, payment breakdown
 - `lib/gst-xlsx.ts` — GST-compliant accounting export (GSTR-1 B2B, B2CL, HSN summary rows)
 - `lib/barcodes.ts` — barcode generation (JSBarcode, Code-128); label PDF generation (jsPDF, 50×25 mm labels)
+
+### Dynamic GST via threshold price
+
+`ProductDoc.thresholdPrice` (optional) enables per-product dynamic GST at billing time. When set:
+- selling price (`unitPrice`) **< `thresholdPrice`** → 5% GST applied
+- selling price **≥ `thresholdPrice`** → 18% GST applied
+
+This overrides the product's static `taxRatePct` at checkout. The resolution happens in `effectiveTaxRate()` inside `components/pos/pos-panel.tsx`, and the resolved rate is passed to `checkoutCart()` (both online and offline paths). The field is editable in the product form under "Pricing & Tax".
 
 ### Tax model (important)
 

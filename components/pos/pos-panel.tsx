@@ -274,6 +274,13 @@ export function PosPanel() {
     }
   }
 
+  function effectiveTaxRate(product: ProductDoc): number {
+    if (product.thresholdPrice != null && product.thresholdPrice > 0) {
+      return product.unitPrice < product.thresholdPrice ? 5 : 18;
+    }
+    return product.taxRatePct ?? 0;
+  }
+
   async function onCheckout() {
     if (cart.length === 0) return;
     setBusy(true);
@@ -298,7 +305,7 @@ export function PosPanel() {
             qty: l.qty, 
             unitPrice: l.product.unitPrice, 
             lineDiscount: lineDiscount(l), 
-            taxRatePct: l.product.taxRatePct ?? 0  // Ensure tax rate is always defined
+            taxRatePct: effectiveTaxRate(l.product)
           })), 
           billDiscount: billDiscComputed, 
           paymentMethod, 
@@ -318,7 +325,7 @@ export function PosPanel() {
             qty: l.qty,
             unitPrice: l.product.unitPrice,
             lineDiscount: lineDiscount(l),
-            taxRatePct: l.product.taxRatePct ?? 0
+            taxRatePct: effectiveTaxRate(l.product)
           }) as any),
           billDiscount: billDiscComputed + couponDiscount, paymentMethod, paymentReferenceId: paymentReferenceId.trim() || undefined, cashierUserId: user?.uid, cashierName: user?.email ?? undefined, customerId, customerName: custName.trim() || undefined, opId: `op-${Date.now()}`,
         });

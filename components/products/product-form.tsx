@@ -30,6 +30,7 @@ export function ProductForm({ mode, initial, onSaved }: ProductFormProps) {
     costPrice: initial?.costPrice,
     reorderLevel: initial?.reorderLevel ?? 5,
     taxRatePct: initial?.taxRatePct ?? 0,
+    thresholdPrice: initial?.thresholdPrice,
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -245,6 +246,25 @@ export function ProductForm({ mode, initial, onSaved }: ProductFormProps) {
                   placeholder="18.0"
                 />
              </div>
+          </div>
+
+          <div className="space-y-2 md:col-span-2">
+            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+              Threshold Price <span className="normal-case font-medium text-slate-400">(optional — enables dynamic GST)</span>
+            </label>
+            <div className="relative max-w-xs">
+              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">₹</span>
+              <input
+                type="number" step="0.01" min="0"
+                className="w-full h-12 bg-white border-0 rounded-xl pl-8 pr-4 text-sm font-bold text-slate-700 shadow-sm outline-none ring-1 ring-slate-200/50 focus:ring-red-300 placeholder:text-slate-300 placeholder:font-medium transition-all"
+                value={form.thresholdPrice ?? ""}
+                onChange={(e) => update("thresholdPrice", e.target.value === "" ? undefined : (parseFloat(e.target.value) || 0))}
+                placeholder="e.g., 1000.00"
+              />
+            </div>
+            <p className="text-[10px] text-slate-400 font-medium">
+              If set: selling price &lt; threshold → 5% GST &nbsp;|&nbsp; selling price ≥ threshold → 18% GST (overrides GST Rate above at billing)
+            </p>
           </div>
         </div>
       </div>

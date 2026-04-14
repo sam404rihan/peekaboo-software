@@ -53,6 +53,7 @@ function toProductDoc(id: string, data: Record<string, unknown>): ProductDoc {
     stock: asNumber(data.stock, 0),
     reorderLevel: data.reorderLevel != null ? asNumber(data.reorderLevel) : undefined,
     taxRatePct: data.taxRatePct != null ? asNumber(data.taxRatePct) : undefined,
+    thresholdPrice: data.thresholdPrice != null ? asNumber(data.thresholdPrice) : undefined,
     active: asBool(data.active, true),
     printedCount: data.printedCount != null ? asNumber(data.printedCount, 0) : 0,
     createdAt: typeof data.createdAt === "string" ? data.createdAt : now,
@@ -106,6 +107,7 @@ export type UpsertProductInput = {
   costPrice?: number;
   reorderLevel?: number;
   taxRatePct?: number;
+  thresholdPrice?: number;
 };
 
 export async function createProduct(input: UpsertProductInput): Promise<string> {
