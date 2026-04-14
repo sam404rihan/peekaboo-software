@@ -69,7 +69,7 @@ const SECTIONS = [
   { id: "inventory", icon: "inventory_2",     title: "Inventory",            keywords: "inventory product stock add new category barcode threshold price gst" },
   { id: "reports",   icon: "bar_chart",       title: "Reports",              keywords: "reports sales stock movement payments gst accounting export excel" },
   { id: "offers",    icon: "local_offer",     title: "Offers & Coupons",     keywords: "offer coupon discount flat percentage bogo birthday priority code" },
-  { id: "settings",  icon: "settings",        title: "Settings",             keywords: "settings business profile gstin receipt template categories barcodes inventory logs audit offline queue" },
+  { id: "settings",  icon: "settings",        title: "Settings",             keywords: "settings business profile gstin receipt template categories barcodes inventory logs audit" },
   { id: "tax",       icon: "receipt",         title: "Tax & GST",            keywords: "tax gst mrp inclusive base price split receipt" },
   { id: "faq",       icon: "help",            title: "FAQ",                  keywords: "faq internet offline stuck queue refund user role gstin barcode" },
 ];
@@ -204,8 +204,7 @@ export default function GuidePage() {
             </ol>
 
             <Note>
-              <strong>Offline mode:</strong> If the internet drops, the POS keeps working. Sales are saved locally and sync automatically when connectivity returns. An Offline badge appears at the top when active.{" "}
-              <GoLink href="/settings/offline-queue">View offline queue</GoLink>
+              <strong>Offline mode:</strong> If the internet drops, the POS keeps working. Sales are saved locally and sync automatically when connectivity returns. An Offline badge appears at the top when active.
             </Note>
           </section>
         )}
@@ -418,7 +417,6 @@ export default function GuidePage() {
                   ["Coupons",           "Create code-based discounts with expiry and usage limits",            "/settings/coupons"],
                   ["Inventory Logs",    "Audit trail of every stock movement",                                 "/settings/inventory-logs"],
                   ["Audit Trail",       "Log of all admin actions in the system",                              "/settings/audit-trail"],
-                  ["Offline Queue",     "View or clear sales waiting to sync after an offline session",        "/settings/offline-queue"],
                 ].map(([name, desc, href]) => (
                   <tr key={name}>
                     <td className="py-2.5 pr-6 font-medium text-slate-800 whitespace-nowrap">{name}</td>
@@ -473,7 +471,7 @@ export default function GuidePage() {
               {[
                 {
                   q: "Can I use the POS without internet?",
-                  a: <>Yes. Bill as normal — sales queue locally and sync automatically when you come back online. Look for the Offline badge at the top. <GoLink href="/settings/offline-queue">View queue</GoLink></>,
+                  a: <>Yes. Bill as normal — sales queue locally and sync automatically when you come back online. Look for the Offline badge at the top.</>,
                 },
                 {
                   q: "Where do I change the store name or GSTIN on receipts?",
@@ -482,10 +480,6 @@ export default function GuidePage() {
                 {
                   q: "How do I process a return?",
                   a: <>Open the original invoice → click <Tag>Exchange</Tag> → select which items to return → choose whether they go back to sellable stock or are marked as damaged. <GoLink href="/invoices">Open Invoices</GoLink></>,
-                },
-                {
-                  q: "A sale is stuck in the offline queue. What do I do?",
-                  a: <>Confirm your internet is working. If it is still stuck, go to <GoLink href="/settings/offline-queue">Settings → Offline Queue</GoLink> to inspect or remove it.</>,
                 },
                 {
                   q: "How do I print barcode labels for new products?",
