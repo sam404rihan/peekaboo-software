@@ -40,7 +40,7 @@ export default function LoginPage() {
             <h2 className="text-white text-5xl font-black leading-[1.1] tracking-tight">
               Built for<br />
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#e84060] to-[#ff8fa3]">
-                toy retailers
+                planet 9
               </span><br />
               who mean<br />business.
             </h2>

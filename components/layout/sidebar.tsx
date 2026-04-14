@@ -48,7 +48,6 @@ const Sidebar = () => {
         <h2 className="font-black text-xl text-[#b7102a] tracking-tight leading-none mb-1">
           {role === "admin" ? "Admin Panel" : "Cashier Panel"}
         </h2>
-        <p className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Toy Co. Management</p>
       </div>
 
       {/* Top Navigation */}
