@@ -55,12 +55,12 @@ export function PosPanel() {
 
       const now = new Date();
       const cartItems: CouponCartItem[] = cart.map(l => ({
-        unitPrice: l.product.unitPrice,
+        unitPrice: billingPrice(l.product),
         quantity: l.qty,
-        lineTotal: l.product.unitPrice * l.qty,
+        lineTotal: billingPrice(l.product) * l.qty,
         category: l.product.category,
       }));
-      const cartTotal = cart.reduce((s, l) => s + l.product.unitPrice * l.qty, 0);
+      const cartTotal = cart.reduce((s, l) => s + billingPrice(l.product) * l.qty, 0);
 
       let best: { id: string; code: string; discountAmount: number } | null = null;
 
@@ -160,11 +160,11 @@ export function PosPanel() {
   }, [cart, billDiscount, billDiscountMode, paymentMethod, paymentReferenceId, custPhone, custName, custEmail, custKidsDob, user?.uid]);
 
   const lineDiscount = useCallback((l: CartLine) => {
-    const base = l.product.unitPrice * l.qty;
+    const base = billingPrice(l.product) * l.qty;
     const v = Number(l.itemDiscount ?? 0);
     return (l.itemDiscountMode ?? 'amount') === 'amount' ? v : (base * v) / 100;
   }, []);
-  const subTotal = useMemo(() => cart.reduce((sum, l) => sum + (l.product.unitPrice * l.qty - lineDiscount(l)), 0), [cart, lineDiscount]);
+  const subTotal = useMemo(() => cart.reduce((sum, l) => sum + (billingPrice(l.product) * l.qty - lineDiscount(l)), 0), [cart, lineDiscount]);
   const billDiscComputed = useMemo(() => (billDiscountMode === 'amount' ? billDiscount : (subTotal * billDiscount) / 100), [billDiscountMode, billDiscount, subTotal]);
   const couponDiscount = couponApplied?.discountAmount ?? 0;
   const total = useMemo(() => Math.max(0, subTotal - billDiscComputed - couponDiscount), [subTotal, billDiscComputed, couponDiscount]);
@@ -193,7 +193,7 @@ export function PosPanel() {
   function addByProductId(id?: string) {
     if (!id) return;
     const p = allProducts.find((x) => x.id === id);
-    if (!p) return;
+    if (!p || !p.active) return;
     setCart((prev) => {
       const idx = prev.findIndex((l) => l.product.id === p.id);
       if (idx >= 0) {
@@ -256,9 +256,9 @@ export function PosPanel() {
     setCouponChecking(true);
     try {
       const cartItemsForCoupon: CouponCartItem[] = cart.map(l => ({
-        unitPrice: l.product.unitPrice,
+        unitPrice: billingPrice(l.product),
         quantity: l.qty,
-        lineTotal: l.product.unitPrice * l.qty - lineDiscount(l),
+        lineTotal: billingPrice(l.product) * l.qty - lineDiscount(l),
         category: l.product.category,
       }));
       const result = await validateCoupon(code, subTotal - billDiscComputed, cartItemsForCoupon);
@@ -274,9 +274,14 @@ export function PosPanel() {
     }
   }
 
+  // MRP is the selling price; unitPrice (Rate) is the purchase/receive price
+  function billingPrice(product: ProductDoc): number {
+    return product.mrp ?? product.unitPrice;
+  }
+
   function effectiveTaxRate(product: ProductDoc): number {
     if (product.thresholdPrice != null && product.thresholdPrice > 0) {
-      return product.unitPrice < product.thresholdPrice ? 5 : 18;
+      return billingPrice(product) < product.thresholdPrice ? 5 : 18;
     }
     return product.taxRatePct ?? 0;
   }
@@ -299,12 +304,12 @@ export function PosPanel() {
       if (!navigator.onLine) {
         const id = `op-${Date.now()}`;
         const payload = { 
-          lines: cart.map(l => ({ 
-            productId: l.product.id!, 
-            name: l.product.name, 
-            qty: l.qty, 
-            unitPrice: l.product.unitPrice, 
-            lineDiscount: lineDiscount(l), 
+          lines: cart.map(l => ({
+            productId: l.product.id!,
+            name: l.product.name,
+            qty: l.qty,
+            unitPrice: billingPrice(l.product),
+            lineDiscount: lineDiscount(l),
             taxRatePct: effectiveTaxRate(l.product)
           })), 
           billDiscount: billDiscComputed, 
@@ -323,7 +328,7 @@ export function PosPanel() {
             productId: l.product.id!,
             name: l.product.name,
             qty: l.qty,
-            unitPrice: l.product.unitPrice,
+            unitPrice: billingPrice(l.product),
             lineDiscount: lineDiscount(l),
             taxRatePct: effectiveTaxRate(l.product)
           }) as any),
@@ -345,7 +350,7 @@ export function PosPanel() {
   const filtered = useMemo(() => {
     const term = searchTerm.trim().toLowerCase();
     if (!term) return [] as ProductDoc[];
-    return allProducts.filter((p) => p.name.toLowerCase().includes(term) || p.sku.toLowerCase().includes(term)).slice(0, 5);
+    return allProducts.filter((p) => p.active && (p.name.toLowerCase().includes(term) || p.sku.toLowerCase().includes(term))).slice(0, 5);
   }, [searchTerm, allProducts]);
 
   return (
@@ -378,7 +383,7 @@ export function PosPanel() {
                        <div className="font-extrabold text-[15px] text-slate-800 group-hover/item:text-[#b7102a] transition-colors">{p.name}</div>
                        <div className="text-[10px] font-black tracking-widest uppercase text-slate-400 mt-1">SKU: {p.sku}</div>
                      </div>
-                     <span className="font-extrabold tabular-nums bg-slate-50 px-3 py-1.5 rounded-lg text-slate-700">₹{p.unitPrice.toFixed(2)}</span>
+                     <span className="font-extrabold tabular-nums bg-slate-50 px-3 py-1.5 rounded-lg text-slate-700">₹{(p.mrp ?? p.unitPrice).toFixed(2)}</span>
                    </button>
                  ))}
               </div>
@@ -462,7 +467,7 @@ export function PosPanel() {
                                 >+</button>
                               </div>
                               <div className="font-extrabold tabular-nums text-slate-900">
-                                 ₹{(line.product.unitPrice * line.qty).toLocaleString()}
+                                 ₹{(billingPrice(line.product) * line.qty).toLocaleString()}
                               </div>
                            </div>
                            {line.itemDiscount ? <div className="text-[10px] font-bold text-red-500 text-right mt-1">-₹{lineDiscount(line).toLocaleString()} Disc</div> : null}

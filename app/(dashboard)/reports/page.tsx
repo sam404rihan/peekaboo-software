@@ -355,7 +355,7 @@ function ProfitLossInline() {
           tax += lineTax;
 
           const prod = productMap.get(item.productId);
-          const unitCost = prod?.costPrice ?? 0;
+          const unitCost = prod?.unitPrice ?? 0;
           const lineCost = unitCost * item.quantity;
           cost += lineCost;
 

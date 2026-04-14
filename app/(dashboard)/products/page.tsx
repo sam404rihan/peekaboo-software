@@ -108,13 +108,14 @@ export default function ProductsListPage() {
          if (stockStatus === "Low Stock" && (safeStock === 0 || safeStock > reorder)) return false;
          if (stockStatus === "Out of Stock" && safeStock > 0) return false;
       }
+      const displayPrice = p.mrp ?? p.unitPrice;
       if (priceMin.trim()) {
          const min = parseFloat(priceMin);
-         if (!isNaN(min) && p.unitPrice < min) return false;
+         if (!isNaN(min) && displayPrice < min) return false;
       }
       if (priceMax.trim()) {
          const max = parseFloat(priceMax);
-         if (!isNaN(max) && p.unitPrice > max) return false;
+         if (!isNaN(max) && displayPrice > max) return false;
       }
       return true;
     });
@@ -170,7 +171,8 @@ export default function ProductsListPage() {
         SKU: p.sku || "",
         Name: p.name,
         Category: p.category || "",
-        Price: p.unitPrice,
+        Rate: p.unitPrice,
+        MRP: p.mrp ?? p.unitPrice,
         Stock: p.stock,
         Reorder: p.reorderLevel || 5,
         GST: p.taxRatePct || 0,
@@ -302,7 +304,7 @@ export default function ProductsListPage() {
               <tr className="bg-[#fce8ec]">
                 <th className="px-6 py-4 text-[10px] font-black text-[#a65b62] uppercase tracking-[0.15em] rounded-tl-[1.8rem]">Product Details</th>
                 <th className="px-6 py-4 text-[10px] font-black text-[#a65b62] uppercase tracking-[0.15em]">Category</th>
-                <th className="px-6 py-4 text-[10px] font-black text-[#a65b62] uppercase tracking-[0.15em]">Price<br/><span className="text-[8px] opacity-70">(INR)</span></th>
+                <th className="px-6 py-4 text-[10px] font-black text-[#a65b62] uppercase tracking-[0.15em]">MRP<br/><span className="text-[8px] opacity-70">(INR)</span></th>
                 <th className="px-6 py-4 text-[10px] font-black text-[#a65b62] uppercase tracking-[0.15em]">Stock Level</th>
                 <th className="px-6 py-4 text-[10px] font-black text-[#a65b62] uppercase tracking-[0.15em]">GST Rate</th>
                 <th className="px-6 py-4 text-[10px] font-black text-[#a65b62] uppercase tracking-[0.15em] rounded-tr-[1.8rem] text-right">Actions</th>
@@ -366,7 +368,7 @@ export default function ProductsListPage() {
                       </td>
                       <td className="px-6 py-5">
                         <div className="font-extrabold text-[15px] text-slate-900 tabular-nums">
-                          ₹{p.unitPrice.toFixed(2)}
+                          ₹{(p.mrp ?? p.unitPrice).toFixed(2)}
                         </div>
                       </td>
                       <td className="px-6 py-5">

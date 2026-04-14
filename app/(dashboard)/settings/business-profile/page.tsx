@@ -186,10 +186,33 @@ export default function BusinessProfileSettingsPage() {
              value={form.state || ""}
              onChange={(e) => update("state", e.target.value)}
              disabled={!isAdmin}
+             placeholder="e.g. Karnataka"
            />
          </div>
 
-         <div className="flex flex-col gap-2 md:col-span-2">
+         <div className="flex flex-col gap-2">
+           <label className="text-[11px] font-bold text-slate-500 tracking-wide">Pin Code</label>
+           <input
+             className="w-full h-[46px] rounded-xl border border-slate-200 bg-white px-4 text-[13px] font-semibold text-slate-700 shadow-sm focus:outline-none focus:ring-1 focus:ring-red-200 transition-all disabled:opacity-50 disabled:bg-slate-50"
+             value={form.pinCode || ""}
+             onChange={(e) => update("pinCode", e.target.value)}
+             disabled={!isAdmin}
+             placeholder="e.g. 560001"
+           />
+         </div>
+
+         <div className="flex flex-col gap-2">
+           <label className="text-[11px] font-bold text-slate-500 tracking-wide">Phone</label>
+           <input
+             className="w-full h-[46px] rounded-xl border border-slate-200 bg-white px-4 text-[13px] font-semibold text-slate-700 shadow-sm focus:outline-none focus:ring-1 focus:ring-red-200 transition-all disabled:opacity-50 disabled:bg-slate-50"
+             value={form.phone || ""}
+             onChange={(e) => update("phone", e.target.value)}
+             disabled={!isAdmin}
+             placeholder="e.g. 9876543210"
+           />
+         </div>
+
+         <div className="flex flex-col gap-2">
            <label className="text-[11px] font-bold text-slate-500 tracking-wide">Email</label>
            <input
              className="w-full h-[46px] rounded-xl border border-slate-200 bg-white px-4 text-[13px] font-semibold text-slate-700 shadow-sm focus:outline-none focus:ring-1 focus:ring-red-200 transition-all disabled:opacity-50 disabled:bg-slate-50"

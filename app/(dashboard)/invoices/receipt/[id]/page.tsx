@@ -222,10 +222,10 @@ export default function InvoiceReceiptPage() {
 
       // ── THE ONE UNIFIED TABLE — mirrors exact HTML structure ───────────────
       // 12 columns matching the HTML colgroup:
-      // Sr(3%) SKU(11%) Desc(*) HSN(8%) Qty(5%) Rate(7%) Total(7%) Net(8%) CgstR(5%) CgstA(5%) SgstR(5%) SgstA(5%)
+      // Sr | SKU | Desc(*) | HSN | Qty | Rate | Total | Net | CgstR | CgstA | SgstR | SgstA
       // A4 content width at 28pt margins = ~539pt
-      // widths in pt: [16, 59, *, 43, 27, 38, 38, 43, 27, 27, 27, 27]  (fixed sum ≈ 372pt)
-      const COL_WIDTHS = [16, 59, "*", 43, 27, 38, 38, 43, 27, 27, 27, 27];
+      // Widened money cols (Rate/Total/Net/Amt) so 4-5 digit prices don't wrap
+      const COL_WIDTHS = [14, 52, "*", 38, 24, 44, 44, 48, 24, 32, 24, 32];
 
       const tableBody: any[][] = [
 

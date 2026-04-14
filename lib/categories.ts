@@ -1,6 +1,6 @@
 "use client";
 import { db } from "@/lib/firebase";
-import { collection, addDoc, updateDoc, doc, getDocs, getDoc, serverTimestamp, query, orderBy, type DocumentData } from "firebase/firestore";
+import { collection, addDoc, updateDoc, doc, getDocs, getDoc, serverTimestamp, query, type DocumentData } from "firebase/firestore";
 import type { CategoryDoc } from "@/lib/models";
 import { COLLECTIONS } from "@/lib/models";
 
@@ -24,9 +24,9 @@ export function toCategoryDoc(id: string, data: Record<string, unknown>): Catego
 export async function listCategories(): Promise<CategoryDoc[]> {
   if (!db) return [];
   const col = collection(db, COLLECTIONS.categories);
-  const qy = query(col, orderBy('name'));
-  const snap = await getDocs(qy);
-  return snap.docs.map(d => toCategoryDoc(d.id, d.data() as DocumentData as Record<string, unknown>));
+  const snap = await getDocs(query(col));
+  const docs = snap.docs.map(d => toCategoryDoc(d.id, d.data() as DocumentData as Record<string, unknown>));
+  return docs.sort((a, b) => a.name.localeCompare(b.name));
 }
 
 export async function getCategory(id: string): Promise<CategoryDoc | null> {

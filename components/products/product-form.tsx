@@ -27,7 +27,7 @@ export function ProductForm({ mode, initial, onSaved }: ProductFormProps) {
     brand: initial?.brand,
     category: initial?.category,
     hsnCode: initial?.hsnCode,
-    costPrice: initial?.costPrice,
+
     reorderLevel: initial?.reorderLevel ?? 5,
     taxRatePct: initial?.taxRatePct ?? 0,
     thresholdPrice: initial?.thresholdPrice,
@@ -43,7 +43,7 @@ export function ProductForm({ mode, initial, onSaved }: ProductFormProps) {
       .then((cs) => {
         if (mounted) setCategories(cs.filter((c) => c.active));
       })
-      .catch(() => undefined);
+      .catch((err) => console.error("Failed to load categories:", err));
     return () => { mounted = false; };
   }, []);
 
@@ -156,19 +156,19 @@ export function ProductForm({ mode, initial, onSaved }: ProductFormProps) {
           </div>
           <div className="space-y-2">
             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Category</label>
-            <div className="relative">
-              <select
-                className="w-full h-12 bg-white border-0 rounded-xl px-4 text-sm font-bold text-slate-700 shadow-sm appearance-none outline-none ring-1 ring-slate-200/50 focus:ring-red-300 transition-all"
-                value={form.category ?? ""}
-                onChange={(e) => applyCategoryDefaults(e.target.value || undefined)}
-              >
-                <option value="">Select category...</option>
-                {categories.map((c) => (
-                  <option key={c.id} value={c.name}>{c.name}</option>
-                ))}
-              </select>
-              <MSIcon name="expand_more" className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none text-[18px]"/>
-            </div>
+            <input
+              list="cat-list"
+              className="w-full h-12 bg-white border-0 rounded-xl px-4 text-sm font-bold text-slate-700 shadow-sm outline-none ring-1 ring-slate-200/50 focus:ring-red-300 placeholder:text-slate-300 placeholder:font-medium transition-all"
+              value={form.category ?? ""}
+              onChange={(e) => applyCategoryDefaults(e.target.value || undefined)}
+              placeholder="e.g. Clothes"
+              autoComplete="off"
+            />
+            <datalist id="cat-list">
+              {categories.map((c) => (
+                <option key={c.id} value={c.name} />
+              ))}
+            </datalist>
           </div>
           <div className="space-y-2">
             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">HSN Code</label>
@@ -193,7 +193,7 @@ export function ProductForm({ mode, initial, onSaved }: ProductFormProps) {
         
         <div className="grid md:grid-cols-2 gap-x-6 gap-y-5 relative z-10">
           <div className="space-y-2">
-            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Selling Price <span className="text-red-500">*</span></label>
+            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Rate <span className="text-red-500">*</span></label>
             <div className="relative">
               <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">₹</span>
               <input
@@ -208,43 +208,45 @@ export function ProductForm({ mode, initial, onSaved }: ProductFormProps) {
           </div>
 
           <div className="space-y-2">
-            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">MRP (Print Label)</label>
+            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">MRP</label>
             <div className="relative">
               <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">₹</span>
               <input
                 type="number" step="0.01" min="0"
-                className="w-full h-12 bg-white border-0 rounded-xl pl-8 pr-4 text-sm font-bold text-slate-700 shadow-sm outline-none ring-1 ring-slate-200/50 focus:ring-red-300 placeholder:text-slate-300 placeholder:font-medium transition-all"
+                className="w-full h-12 bg-white border-0 rounded-xl pl-8 pr-4 text-sm font-extrabold text-slate-900 shadow-sm outline-none ring-1 ring-slate-200/50 focus:ring-red-300 placeholder:text-slate-300 placeholder:font-medium transition-all"
                 value={form.mrp ?? ""}
                 onChange={(e) => update("mrp", Number.isNaN(parseFloat(e.target.value)) ? undefined : parseFloat(e.target.value))}
-                placeholder="Leave empty if same as SP"
+                placeholder="Leave empty to bill at Rate"
               />
             </div>
           </div>
 
           <div className="space-y-2">
-             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Cost Price</label>
+             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+               GST Rate %
+               {form.thresholdPrice != null && form.thresholdPrice > 0 && (
+                 <span className="ml-2 normal-case font-medium text-[9px] px-2 py-0.5 rounded-full bg-[#b7102a]/10 text-[#b7102a]">
+                   dynamic — MRP {(form.mrp ?? form.unitPrice) < form.thresholdPrice ? "< threshold → 5%" : "≥ threshold → 18%"}
+                 </span>
+               )}
+             </label>
              <div className="relative">
-               <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">₹</span>
-               <input 
-                 type="number" step="0.01" min="0"
-                 className="w-full h-12 bg-white border-0 rounded-xl pl-8 pr-4 text-sm font-bold text-slate-700 shadow-sm outline-none ring-1 ring-slate-200/50 focus:ring-red-300 placeholder:text-slate-300 placeholder:font-medium transition-all"
-                 value={form.costPrice || ""} 
-                 onChange={(e) => update("costPrice", parseFloat(e.target.value) || 0)} 
-                 placeholder="0.00" 
-               />
-             </div>
-          </div>
-
-          <div className="space-y-2">
-             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">GST Rate %</label>
-             <div className="relative">
-                <input
-                  type="number" step="0.1" min="0"
-                  className="w-full h-12 bg-white border-0 rounded-xl px-4 text-sm font-extrabold text-[#b7102a] shadow-sm outline-none ring-1 ring-slate-200/50 focus:ring-red-300 placeholder:text-slate-300 placeholder:font-medium transition-all"
-                  value={form.taxRatePct === undefined || form.taxRatePct === null ? "" : form.taxRatePct}
-                  onChange={(e) => update("taxRatePct", e.target.value === "" ? undefined : (Number.isNaN(parseFloat(e.target.value)) ? 0 : parseFloat(e.target.value)))}
-                  placeholder="18.0"
-                />
+                {form.thresholdPrice != null && form.thresholdPrice > 0 ? (
+                  <div className="w-full h-12 bg-slate-50 border-0 rounded-xl px-4 text-sm font-extrabold text-[#b7102a] shadow-sm ring-1 ring-slate-200/50 flex items-center gap-2">
+                    <span className="text-2xl font-black">
+                      {(form.mrp ?? form.unitPrice) < form.thresholdPrice ? "5" : "18"}%
+                    </span>
+                    <span className="text-[10px] font-bold text-slate-400 normal-case">overrides saved rate at billing</span>
+                  </div>
+                ) : (
+                  <input
+                    type="number" step="0.1" min="0"
+                    className="w-full h-12 bg-white border-0 rounded-xl px-4 text-sm font-extrabold text-[#b7102a] shadow-sm outline-none ring-1 ring-slate-200/50 focus:ring-red-300 placeholder:text-slate-300 placeholder:font-medium transition-all"
+                    value={form.taxRatePct === undefined || form.taxRatePct === null ? "" : form.taxRatePct}
+                    onChange={(e) => update("taxRatePct", e.target.value === "" ? undefined : (Number.isNaN(parseFloat(e.target.value)) ? 0 : parseFloat(e.target.value)))}
+                    placeholder="18.0"
+                  />
+                )}
              </div>
           </div>
 
@@ -263,7 +265,7 @@ export function ProductForm({ mode, initial, onSaved }: ProductFormProps) {
               />
             </div>
             <p className="text-[10px] text-slate-400 font-medium">
-              If set: selling price &lt; threshold → 5% GST &nbsp;|&nbsp; selling price ≥ threshold → 18% GST (overrides GST Rate above at billing)
+              If set: MRP &lt; threshold → 5% GST &nbsp;|&nbsp; MRP ≥ threshold → 18% GST (overrides GST Rate above at billing)
             </p>
           </div>
         </div>

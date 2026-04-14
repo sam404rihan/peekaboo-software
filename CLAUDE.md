@@ -46,7 +46,7 @@ All Firestore logic lives in `lib/`. The collection name constants in `lib/model
 Key modules:
 - `lib/models.ts` — all TypeScript interfaces and `COLLECTIONS` constants. Single source of truth for the data model.
 - `lib/firebase.ts` — initializes Firebase only when all env vars are present; exports `auth`, `db`, `storage` (all possibly `undefined`). Always guard: `if (!db) throw new Error(...)`.
-- `lib/pos.ts` — `checkoutCart()` (Firestore transaction: validates stock, decrements, creates Invoice + InventoryLogs + customer loyalty in one atomic op), `adjustStock()`, `receiveStock()`
+- `lib/pos.ts` — `checkoutCart()` (Firestore transaction: validates stock, decrements, creates Invoice + InventoryLogs + customer loyalty in one atomic op), `adjustStock()`, `receiveStock()`. **Note:** `ProductDoc.unitPrice` = Rate (purchase/receive price); `ProductDoc.mrp` = MRP (selling price to customers). MRP is what's shown in the products list and billed at POS.
 - `lib/exchange.ts` — exchange/return flow; validates remaining returnable qty, handles defect vs sellable returns, creates new invoice if new items added
 - `lib/offline.ts` — offline queue; serializes pending ops (checkout, receive, exchange) to localStorage and replays on reconnect
 - `lib/catalog-cache.ts` — warms product catalog into localStorage for offline POS scanning

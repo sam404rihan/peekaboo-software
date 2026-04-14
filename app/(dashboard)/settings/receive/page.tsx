@@ -62,14 +62,14 @@ export default function ReceiveStockPage() {
       patchLine(existing.id, { qty: existing.qty + 1, qtyInput: String(existing.qty + 1) });
       toast({ title: "Qty updated", description: `${prod.name} → ${existing.qty + 1}` });
     } else {
-      setLines(prev => [...prev, { id: uid(), productId: prod.id!, sku: prod.sku, name: prod.name, qty: 1, qtyInput: "1", unitCost: prod.costPrice ? String(prod.costPrice) : "", note: "" }]);
+      setLines(prev => [...prev, { id: uid(), productId: prod.id!, sku: prod.sku, name: prod.name, qty: 1, qtyInput: "1", unitCost: prod.unitPrice ? String(prod.unitPrice) : "", note: "" }]);
     }
   };
 
   const handleProductSelect = (lineId: string, productId: string) => {
     const prod = productMap.get(productId);
     if (!prod) { patchLine(lineId, { productId: "", sku: "", name: "" }); return; }
-    patchLine(lineId, { productId: prod.id!, sku: prod.sku, name: prod.name, unitCost: prod.costPrice ? String(prod.costPrice) : "" });
+    patchLine(lineId, { productId: prod.id!, sku: prod.sku, name: prod.name, unitCost: prod.unitPrice ? String(prod.unitPrice) : "" });
   };
 
   const totalUnits = lines.reduce((s, l) => s + (Number(l.qtyInput) || 0), 0);

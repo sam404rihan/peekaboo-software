@@ -17,7 +17,9 @@
       "Bash(grep -n \"window.location.href\\\\|/invoices/\\\\${\" \"app/\\(dashboard\\)/invoices/page.tsx\")",
       "Bash(npx firebase:*)",
       "Bash(npx next:*)",
-      "Bash(grep -v \"^$\")"
+      "Bash(grep -v \"^$\")",
+      "Bash(git worktree:*)",
+      "Bash(git branch:*)"
     ]
   }
 }

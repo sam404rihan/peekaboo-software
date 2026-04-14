@@ -72,7 +72,7 @@ export default function EditProductPage() {
                   brand: product.brand,
                   category: product.category,
                   hsnCode: product.hsnCode,
-                  costPrice: product.costPrice,
+
                   reorderLevel: product.reorderLevel,
                   taxRatePct: product.taxRatePct,
                   thresholdPrice: product.thresholdPrice,

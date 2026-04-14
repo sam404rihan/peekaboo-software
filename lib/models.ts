@@ -36,9 +36,9 @@ export interface ProductDoc extends BaseDoc {
   brand?: string; // brand / manufacturer name
   category?: string;
   hsnCode?: string; // HSN/SAC code for GST
-  unitPrice: number; // stored as number in smallest currency unit? (decide) currently decimal number
+  unitPrice: number; // Rate — the price the store receives/buys the product at
   costPrice?: number;
-  mrp?: number; // maximum retail price
+  mrp?: number; // MRP — the selling price to customers (Maximum Retail Price)
   stock: number; // current on-hand quantity
   reorderLevel?: number; // threshold for low-stock alerts
   taxRatePct?: number; // e.g. 5 for 5%
