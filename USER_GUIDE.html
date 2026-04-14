@@ -1,0 +1,769 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Toy Co. Management — User Guide</title>
+<style>
+  /* ── Fonts ── */
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+
+  /* ── Reset & Base ── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --red:    #b7102a;
+    --red-lt: #fff0f2;
+    --red-md: #fdd4da;
+    --ink:    #1a1a2e;
+    --muted:  #64748b;
+    --border: #e2e8f0;
+    --bg:     #fff8f7;
+    --white:  #ffffff;
+    --yellow: #fef3c7;
+    --yellow-dk: #d97706;
+    --green:  #d1fae5;
+    --green-dk: #065f46;
+    --blue:   #dbeafe;
+    --blue-dk: #1e40af;
+    --purple: #ede9fe;
+    --purple-dk: #5b21b6;
+  }
+
+  body {
+    font-family: 'Inter', system-ui, sans-serif;
+    font-size: 13px;
+    line-height: 1.65;
+    color: var(--ink);
+    background: var(--bg);
+    padding: 0;
+  }
+
+  /* ── Page wrapper ── */
+  .page {
+    max-width: 820px;
+    margin: 0 auto;
+    background: var(--white);
+    padding: 56px 64px;
+  }
+
+  /* ── Cover ── */
+  .cover {
+    text-align: center;
+    padding: 80px 0 60px;
+    border-bottom: 2px solid var(--red);
+    margin-bottom: 56px;
+  }
+  .cover .logo-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--red);
+    color: #fff;
+    font-weight: 900;
+    font-size: 18px;
+    letter-spacing: -0.5px;
+    padding: 10px 24px;
+    border-radius: 999px;
+    margin-bottom: 28px;
+  }
+  .cover h1 {
+    font-size: 36px;
+    font-weight: 900;
+    color: var(--ink);
+    letter-spacing: -1px;
+    line-height: 1.15;
+    margin-bottom: 12px;
+  }
+  .cover .subtitle {
+    font-size: 15px;
+    color: var(--muted);
+    font-weight: 500;
+  }
+  .cover .meta {
+    margin-top: 20px;
+    font-size: 11px;
+    color: #94a3b8;
+    font-weight: 600;
+    letter-spacing: .5px;
+    text-transform: uppercase;
+  }
+
+  /* ── Section heading ── */
+  h2 {
+    font-size: 20px;
+    font-weight: 800;
+    color: var(--red);
+    letter-spacing: -.4px;
+    margin-top: 52px;
+    margin-bottom: 16px;
+    padding-bottom: 8px;
+    border-bottom: 1.5px solid var(--red-md);
+    page-break-after: avoid;
+  }
+  h2 .icon {
+    display: inline-block;
+    width: 28px;
+    height: 28px;
+    background: var(--red);
+    color: #fff;
+    border-radius: 8px;
+    font-size: 14px;
+    text-align: center;
+    line-height: 28px;
+    margin-right: 8px;
+    vertical-align: middle;
+  }
+
+  h3 {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--ink);
+    margin-top: 24px;
+    margin-bottom: 8px;
+    page-break-after: avoid;
+  }
+
+  p { margin-bottom: 10px; }
+
+  /* ── Keyword highlight ── */
+  .kw {
+    background: var(--red-lt);
+    color: var(--red);
+    font-weight: 700;
+    padding: 1px 5px;
+    border-radius: 4px;
+    white-space: nowrap;
+  }
+  .kw-yellow {
+    background: var(--yellow);
+    color: var(--yellow-dk);
+    font-weight: 700;
+    padding: 1px 5px;
+    border-radius: 4px;
+  }
+  .kw-green {
+    background: var(--green);
+    color: var(--green-dk);
+    font-weight: 700;
+    padding: 1px 5px;
+    border-radius: 4px;
+  }
+  .kw-blue {
+    background: var(--blue);
+    color: var(--blue-dk);
+    font-weight: 700;
+    padding: 1px 5px;
+    border-radius: 4px;
+  }
+  .kw-purple {
+    background: var(--purple);
+    color: var(--purple-dk);
+    font-weight: 700;
+    padding: 1px 5px;
+    border-radius: 4px;
+  }
+
+  /* ── Callout boxes ── */
+  .callout {
+    border-left: 3px solid var(--red);
+    background: var(--red-lt);
+    padding: 10px 14px;
+    border-radius: 0 8px 8px 0;
+    margin: 14px 0;
+    font-size: 12.5px;
+  }
+  .callout.info {
+    border-color: #3b82f6;
+    background: var(--blue);
+    color: var(--blue-dk);
+  }
+  .callout.success {
+    border-color: #10b981;
+    background: var(--green);
+    color: var(--green-dk);
+  }
+  .callout.warn {
+    border-color: var(--yellow-dk);
+    background: var(--yellow);
+    color: var(--yellow-dk);
+  }
+  .callout strong { font-weight: 700; }
+
+  /* ── Numbered steps ── */
+  .steps { counter-reset: step; list-style: none; margin: 12px 0; }
+  .steps li {
+    counter-increment: step;
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    margin-bottom: 10px;
+  }
+  .steps li::before {
+    content: counter(step);
+    flex-shrink: 0;
+    width: 22px;
+    height: 22px;
+    background: var(--red);
+    color: #fff;
+    font-weight: 800;
+    font-size: 11px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: 1px;
+  }
+
+  /* ── Tables ── */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 14px 0;
+    font-size: 12.5px;
+  }
+  thead tr { background: var(--red); color: #fff; }
+  thead th {
+    padding: 8px 12px;
+    text-align: left;
+    font-weight: 700;
+    font-size: 11.5px;
+    letter-spacing: .3px;
+  }
+  tbody tr:nth-child(even) { background: #fafafa; }
+  tbody tr:hover { background: var(--red-lt); }
+  tbody td { padding: 7px 12px; border-bottom: 1px solid var(--border); }
+  tbody td:first-child { font-weight: 600; }
+
+  /* ── Role chips ── */
+  .chip {
+    display: inline-block;
+    padding: 2px 9px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .2px;
+  }
+  .chip-admin { background: var(--red); color: #fff; }
+  .chip-cashier { background: var(--blue); color: var(--blue-dk); }
+
+  /* ── Flow diagram ── */
+  .flow-wrap {
+    margin: 20px 0;
+    overflow: hidden;
+    border-radius: 12px;
+    border: 1.5px solid var(--border);
+    background: #fafafa;
+    padding: 24px 16px;
+  }
+  .flow-title {
+    text-align: center;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .5px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 16px;
+  }
+
+  /* SVG flows */
+  .flow-svg { display: block; width: 100%; height: auto; }
+
+  /* ── Two-col grid ── */
+  .grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    margin: 16px 0;
+  }
+  .card {
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 16px;
+    background: #fff;
+  }
+  .card .card-title {
+    font-weight: 700;
+    font-size: 12.5px;
+    margin-bottom: 6px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .card .card-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .card p { font-size: 12px; color: var(--muted); margin: 0; }
+
+  /* ── FAQ ── */
+  .faq { margin: 12px 0; }
+  .faq-item { margin-bottom: 14px; }
+  .faq-q {
+    font-weight: 700;
+    color: var(--ink);
+    margin-bottom: 3px;
+  }
+  .faq-q::before { content: "Q  "; color: var(--red); font-weight: 800; }
+  .faq-a { color: var(--muted); font-size: 12.5px; padding-left: 18px; }
+
+  /* ── Page breaks ── */
+  .break-before { page-break-before: always; }
+
+  /* ── Print ── */
+  @media print {
+    body { background: #fff; font-size: 11.5px; }
+    .page { padding: 36px 44px; box-shadow: none; }
+    h2 { margin-top: 36px; }
+    a { color: inherit; text-decoration: none; }
+    .flow-wrap { break-inside: avoid; }
+    .grid-2 { break-inside: avoid; }
+    table { break-inside: avoid; }
+  }
+
+  @page {
+    size: A4;
+    margin: 18mm 14mm;
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- ══════════ COVER ══════════ -->
+  <div class="cover">
+    <div class="logo-badge">
+      &#9733; Toy Co.
+    </div>
+    <h1>Management System<br/>User Guide</h1>
+    <p class="subtitle">Everything you need to bill, manage stock, and grow your store</p>
+    <p class="meta">Version 1.0 &nbsp;·&nbsp; April 2026 &nbsp;·&nbsp; For all staff roles</p>
+  </div>
+
+  <!-- ══════════ ROLES ══════════ -->
+  <h2><span class="icon">①</span> Roles &amp; Access</h2>
+  <p>Every user has one of two roles. Your role decides what you can see in the sidebar.</p>
+
+  <table>
+    <thead>
+      <tr><th>Role</th><th>Access</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><span class="chip chip-admin">Admin</span></td>
+        <td>Dashboard, POS, Inventory, Invoices, Customers, Reports, Settings — everything</td>
+      </tr>
+      <tr>
+        <td><span class="chip chip-cashier">Cashier</span></td>
+        <td>POS, Invoices, Customers only</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="callout info">
+    <strong>Tip:</strong> If a menu item is missing, it is intentionally hidden for your role — contact your admin if you need access.
+  </div>
+
+
+  <!-- ══════════ POS ══════════ -->
+  <h2 class="break-before"><span class="icon">②</span> POS Terminal — Making a Sale</h2>
+  <p>
+    Click the red <span class="kw">New Sale</span> button in the sidebar (always visible) or navigate to <span class="kw-blue">POS</span>.
+    This is the main billing screen.
+  </p>
+
+  <!-- Checkout flow diagram -->
+  <div class="flow-wrap">
+    <div class="flow-title">Checkout Flow</div>
+    <svg class="flow-svg" viewBox="0 0 700 90" xmlns="http://www.w3.org/2000/svg" font-family="Inter,sans-serif">
+      <!-- Node helper: rx=8, fill varies -->
+      <!-- Step 1 -->
+      <rect x="0"   y="20" width="100" height="50" rx="8" fill="#b7102a"/>
+      <text x="50"  y="41" text-anchor="middle" fill="#fff" font-size="10" font-weight="700">Scan /</text>
+      <text x="50"  y="55" text-anchor="middle" fill="#fff" font-size="10" font-weight="700">Search Item</text>
+      <!-- Arrow -->
+      <line x1="100" y1="45" x2="126" y2="45" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#arr)"/>
+      <!-- Step 2 -->
+      <rect x="128" y="20" width="100" height="50" rx="8" fill="#1e40af"/>
+      <text x="178" y="41" text-anchor="middle" fill="#fff" font-size="10" font-weight="700">Add to</text>
+      <text x="178" y="55" text-anchor="middle" fill="#fff" font-size="10" font-weight="700">Cart + Qty</text>
+      <!-- Arrow -->
+      <line x1="228" y1="45" x2="254" y2="45" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#arr)"/>
+      <!-- Step 3 -->
+      <rect x="256" y="20" width="100" height="50" rx="8" fill="#065f46"/>
+      <text x="306" y="41" text-anchor="middle" fill="#fff" font-size="10" font-weight="700">Select</text>
+      <text x="306" y="55" text-anchor="middle" fill="#fff" font-size="10" font-weight="700">Customer</text>
+      <!-- Arrow -->
+      <line x1="356" y1="45" x2="382" y2="45" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#arr)"/>
+      <!-- Step 4 -->
+      <rect x="384" y="20" width="100" height="50" rx="8" fill="#5b21b6"/>
+      <text x="434" y="41" text-anchor="middle" fill="#fff" font-size="10" font-weight="700">Coupon /</text>
+      <text x="434" y="55" text-anchor="middle" fill="#fff" font-size="10" font-weight="700">Offer (opt.)</text>
+      <!-- Arrow -->
+      <line x1="484" y1="45" x2="510" y2="45" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#arr)"/>
+      <!-- Step 5 -->
+      <rect x="512" y="20" width="100" height="50" rx="8" fill="#d97706"/>
+      <text x="562" y="41" text-anchor="middle" fill="#fff" font-size="10" font-weight="700">Payment</text>
+      <text x="562" y="55" text-anchor="middle" fill="#fff" font-size="10" font-weight="700">Method</text>
+      <!-- Arrow -->
+      <line x1="612" y1="45" x2="638" y2="45" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#arr)"/>
+      <!-- Step 6 -->
+      <rect x="640" y="20" width="60" height="50" rx="8" fill="#b7102a"/>
+      <text x="670" y="41" text-anchor="middle" fill="#fff" font-size="10" font-weight="700">Check-</text>
+      <text x="670" y="55" text-anchor="middle" fill="#fff" font-size="10" font-weight="700">out ✓</text>
+
+      <defs>
+        <marker id="arr" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
+          <path d="M0,0 L0,6 L6,3 z" fill="#94a3b8"/>
+        </marker>
+      </defs>
+    </svg>
+  </div>
+
+  <ol class="steps">
+    <li><strong>Scan or search</strong> — use a barcode scanner or type the product name/barcode. Press <span class="kw">Enter</span> to add the first result instantly.</li>
+    <li><strong>Adjust quantity</strong> using the <span class="kw">+</span> / <span class="kw">−</span> buttons in the cart.</li>
+    <li><strong>Select a customer</strong> — type their name or phone. New customer? Enter details and they are saved automatically.</li>
+    <li><strong>Apply a coupon</strong> (optional) — enter the code in the coupon field. Automatic offers apply without any code.</li>
+    <li><strong>Choose payment method</strong> — <span class="kw-green">Cash</span>, <span class="kw-blue">Card</span>, <span class="kw-purple">UPI</span>, or a split across methods.</li>
+    <li>Click <span class="kw">Checkout</span> — the invoice is created and the receipt appears immediately.</li>
+  </ol>
+
+  <div class="callout success">
+    <strong>Offline mode:</strong> If the internet drops the POS keeps working normally. Sales queue in local storage and sync automatically when connectivity returns. An <span class="kw-green">Offline</span> badge appears at the top when this is active.
+  </div>
+
+
+  <!-- ══════════ INVOICES ══════════ -->
+  <h2><span class="icon">③</span> Invoices</h2>
+  <p>Every completed sale lives here. Go to <span class="kw-blue">Invoices</span> in the sidebar.</p>
+
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title"><span class="card-dot" style="background:#b7102a"></span> View &amp; Search</div>
+      <p>Filter by invoice number, customer name, or date range. Click any row to see the full breakdown — items, GST split, payment method.</p>
+    </div>
+    <div class="card">
+      <div class="card-title"><span class="card-dot" style="background:#1e40af"></span> Print Receipt</div>
+      <p>Open an invoice → click the <span class="kw-blue">Print</span> icon. A print-ready receipt page opens. You can also copy the receipt link to share with the customer.</p>
+    </div>
+    <div class="card">
+      <div class="card-title"><span class="card-dot" style="background:#065f46"></span> Exchange / Return</div>
+      <p>Open an invoice → click <span class="kw-green">Exchange</span>. Select which items to return and whether they go back to sellable stock or are marked as damaged.</p>
+    </div>
+    <div class="card">
+      <div class="card-title"><span class="card-dot" style="background:#d97706"></span> Add New Items</div>
+      <p>During an exchange you can also add new products. The system creates a new invoice for the difference and updates stock in one step.</p>
+    </div>
+  </div>
+
+
+  <!-- ══════════ CUSTOMERS ══════════ -->
+  <h2><span class="icon">④</span> Customers</h2>
+  <p>Go to <span class="kw-blue">Customers</span> to see everyone who has ever purchased.</p>
+  <ul style="padding-left:20px; margin:10px 0;">
+    <li style="margin-bottom:6px">Search by <span class="kw">name</span> or <span class="kw">phone number</span>.</li>
+    <li style="margin-bottom:6px">Click a customer to see their <span class="kw-blue">full purchase history</span> and current <span class="kw-green">loyalty points</span> balance.</li>
+    <li>Loyalty points are earned automatically at checkout and can be redeemed on the next sale.</li>
+  </ul>
+
+
+  <!-- ══════════ INVENTORY ══════════ -->
+  <h2 class="break-before"><span class="icon">⑤</span> Inventory <span class="chip chip-admin">Admin</span></h2>
+  <p>Go to <span class="kw-blue">Inventory</span> to manage your product catalog and stock.</p>
+
+  <h3>Adding a New Product</h3>
+  <ol class="steps">
+    <li>Click <span class="kw">New Product</span> (top-right).</li>
+    <li>Fill in <span class="kw">Name</span>, <span class="kw">Category</span>, <span class="kw">Barcode</span> (auto-generated if left blank), <span class="kw">MRP</span> (selling price), <span class="kw">Rate</span> (purchase/cost price), and starting <span class="kw">Stock</span>.</li>
+    <li>Set <span class="kw-purple">Tax Rate</span> — usually 18% GST. For products with variable GST, enter a <span class="kw-purple">Threshold Price</span> (see below).</li>
+    <li>Click <span class="kw">Save</span>.</li>
+  </ol>
+
+  <div class="callout warn">
+    <strong>Dynamic GST (Threshold Price):</strong> If a product has a <span class="kw-yellow">Threshold Price</span> set, the tax rate switches automatically at billing —
+    selling price <em>below</em> threshold → <strong>5% GST</strong>; at or above → <strong>18% GST</strong>. Useful for items like footwear regulated under slab-based GST.
+  </div>
+
+  <h3>Restocking — Receiving New Stock</h3>
+  <p>Go to <span class="kw-blue">Settings → Receive Stock</span>.</p>
+  <ol class="steps">
+    <li>Search for the product.</li>
+    <li>Enter the <span class="kw">quantity received</span> and the <span class="kw">purchase rate</span>.</li>
+    <li>Submit — stock is updated and an <span class="kw-green">Inventory Log</span> entry is written automatically.</li>
+  </ol>
+
+  <!-- Stock mutation flow -->
+  <div class="flow-wrap">
+    <div class="flow-title">Stock Mutation Flow (every change is logged)</div>
+    <svg class="flow-svg" viewBox="0 0 680 120" xmlns="http://www.w3.org/2000/svg" font-family="Inter,sans-serif">
+      <!-- Central node -->
+      <rect x="270" y="35" width="140" height="50" rx="8" fill="#b7102a"/>
+      <text x="340" y="56" text-anchor="middle" fill="#fff" font-size="11" font-weight="800">Products</text>
+      <text x="340" y="72" text-anchor="middle" fill="#fff" font-size="10">Stock Counter</text>
+
+      <!-- Sale (left-top) -->
+      <rect x="20"  y="5"  width="110" height="40" rx="8" fill="#1e40af"/>
+      <text x="75"  y="22" text-anchor="middle" fill="#fff" font-size="10" font-weight="700">Sale (POS)</text>
+      <text x="75"  y="36" text-anchor="middle" fill="#fff" font-size="9">−qty on checkout</text>
+      <line x1="130" y1="25" x2="268" y2="52" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#arr2)"/>
+
+      <!-- Receive (left-bottom) -->
+      <rect x="20"  y="75" width="110" height="40" rx="8" fill="#065f46"/>
+      <text x="75"  y="91" text-anchor="middle" fill="#fff" font-size="10" font-weight="700">Receive Stock</text>
+      <text x="75"  y="105" text-anchor="middle" fill="#fff" font-size="9">+qty on receive</text>
+      <line x1="130" y1="95" x2="268" y2="68" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#arr2)"/>
+
+      <!-- Return (right-top) -->
+      <rect x="550" y="5"  width="110" height="40" rx="8" fill="#5b21b6"/>
+      <text x="605" y="22" text-anchor="middle" fill="#fff" font-size="10" font-weight="700">Return</text>
+      <text x="605" y="36" text-anchor="middle" fill="#fff" font-size="9">+qty (if sellable)</text>
+      <line x1="550" y1="25" x2="412" y2="52" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#arr2)"/>
+
+      <!-- Damage (right-bottom) -->
+      <rect x="550" y="75" width="110" height="40" rx="8" fill="#d97706"/>
+      <text x="605" y="91" text-anchor="middle" fill="#fff" font-size="10" font-weight="700">Damage</text>
+      <text x="605" y="105" text-anchor="middle" fill="#fff" font-size="9">−qty (defect log)</text>
+      <line x1="550" y1="95" x2="412" y2="68" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#arr2)"/>
+
+      <!-- Log output -->
+      <rect x="253" y="100" width="174" height="18" rx="6" fill="#fdd4da"/>
+      <text x="340" y="113" text-anchor="middle" fill="#b7102a" font-size="9.5" font-weight="700">→ Inventory Log entry written</text>
+      <line x1="340" y1="85" x2="340" y2="100" stroke="#b7102a" stroke-width="1.5" stroke-dasharray="3,2"/>
+
+      <defs>
+        <marker id="arr2" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
+          <path d="M0,0 L0,6 L6,3 z" fill="#94a3b8"/>
+        </marker>
+      </defs>
+    </svg>
+  </div>
+
+
+  <!-- ══════════ REPORTS ══════════ -->
+  <h2><span class="icon">⑥</span> Reports <span class="chip chip-admin">Admin</span></h2>
+  <p>Go to <span class="kw-blue">Reports</span>. Use the <span class="kw">date pickers</span> to filter any report by range.</p>
+
+  <table>
+    <thead>
+      <tr><th>Report</th><th>What it shows</th><th>Export?</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><span class="kw">Sales</span></td>
+        <td>Revenue, invoice count, item-level breakdown</td>
+        <td><span class="kw-green">Excel</span></td>
+      </tr>
+      <tr>
+        <td><span class="kw">Stock</span></td>
+        <td>Current stock levels &amp; total inventory value</td>
+        <td><span class="kw-green">Excel</span></td>
+      </tr>
+      <tr>
+        <td><span class="kw">Movement</span></td>
+        <td>Every stock change — sales, restocking, returns, damage</td>
+        <td><span class="kw-green">Excel</span></td>
+      </tr>
+      <tr>
+        <td><span class="kw">Payments</span></td>
+        <td>Totals split by Cash / Card / UPI</td>
+        <td><span class="kw-green">Excel</span></td>
+      </tr>
+      <tr>
+        <td><span class="kw-yellow">GST Export</span></td>
+        <td>GSTR-1 file — B2B, B2CL, HSN summary rows</td>
+        <td><span class="kw-yellow">Excel (GST)</span></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="callout info">
+    <strong>GST / Accounting Export</strong> is at <em>Reports → Accounting Export</em>. Hand the downloaded Excel directly to your accountant — it is formatted to GSTR-1 standards.
+  </div>
+
+
+  <!-- ══════════ OFFERS & COUPONS ══════════ -->
+  <h2 class="break-before"><span class="icon">⑦</span> Offers &amp; Coupons <span class="chip chip-admin">Admin</span></h2>
+
+  <!-- Offer vs Coupon flow -->
+  <div class="flow-wrap">
+    <div class="flow-title">Discount Decision Tree</div>
+    <svg class="flow-svg" viewBox="0 0 600 130" xmlns="http://www.w3.org/2000/svg" font-family="Inter,sans-serif">
+      <!-- Start -->
+      <rect x="220" y="0" width="160" height="38" rx="8" fill="#1a1a2e"/>
+      <text x="300" y="14" text-anchor="middle" fill="#fff" font-size="10" font-weight="700">Discount at Checkout</text>
+      <text x="300" y="28" text-anchor="middle" fill="#fff" font-size="9">Does customer need to enter a code?</text>
+
+      <!-- No branch → Offer -->
+      <line x1="220" y1="19" x2="140" y2="60" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#arr3)"/>
+      <text x="145" y="52" font-size="9" fill="#94a3b8" font-weight="600">NO</text>
+      <rect x="20" y="62" width="130" height="60" rx="8" fill="#b7102a"/>
+      <text x="85"  y="80" text-anchor="middle" fill="#fff" font-size="10.5" font-weight="800">OFFER</text>
+      <text x="85"  y="95" text-anchor="middle" fill="#fff" font-size="9">Applies automatically</text>
+      <text x="85"  y="108" text-anchor="middle" fill="#fff" font-size="9">Flat · % · BOGO · DOB</text>
+
+      <!-- Yes branch → Coupon -->
+      <line x1="380" y1="19" x2="460" y2="60" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#arr3)"/>
+      <text x="420" y="52" font-size="9" fill="#94a3b8" font-weight="600">YES</text>
+      <rect x="450" y="62" width="130" height="60" rx="8" fill="#5b21b6"/>
+      <text x="515" y="80" text-anchor="middle" fill="#fff" font-size="10.5" font-weight="800">COUPON</text>
+      <text x="515" y="95" text-anchor="middle" fill="#fff" font-size="9">Customer enters code</text>
+      <text x="515" y="108" text-anchor="middle" fill="#fff" font-size="9">Expiry · usage limit</text>
+
+      <defs>
+        <marker id="arr3" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
+          <path d="M0,0 L0,6 L6,3 z" fill="#94a3b8"/>
+        </marker>
+      </defs>
+    </svg>
+  </div>
+
+  <h3>Offers — Settings → Offers</h3>
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title"><span class="card-dot" style="background:#b7102a"></span> Flat</div>
+      <p>Fixed rupee discount — e.g. <span class="kw">₹50 off</span> every purchase.</p>
+    </div>
+    <div class="card">
+      <div class="card-title"><span class="card-dot" style="background:#1e40af"></span> Percentage</div>
+      <p>e.g. <span class="kw-blue">10% off</span> the cart total.</p>
+    </div>
+    <div class="card">
+      <div class="card-title"><span class="card-dot" style="background:#065f46"></span> BOGO</div>
+      <p>Buy One Get One free — applies to the <span class="kw-green">same item</span> only.</p>
+    </div>
+    <div class="card">
+      <div class="card-title"><span class="card-dot" style="background:#d97706"></span> Birthday (DOB)</div>
+      <p>Targets customers whose <span class="kw-yellow">birthday month</span> matches the current month.</p>
+    </div>
+  </div>
+  <p>If multiple offers match, set a <span class="kw">Priority</span> number — the highest priority offer wins.</p>
+
+  <h3>Coupons — Settings → Coupons</h3>
+  <p>
+    Create a code, set an <span class="kw-yellow">expiry date</span>, a <span class="kw-yellow">usage limit</span> (or unlimited), and a discount value (flat or %). Customers enter the code at the POS coupon field.
+  </p>
+
+
+  <!-- ══════════ SETTINGS ══════════ -->
+  <h2><span class="icon">⑧</span> Settings <span class="chip chip-admin">Admin</span></h2>
+
+  <table>
+    <thead>
+      <tr><th>Section</th><th>What you can do</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>Business Profile</td><td>Store name, address, <span class="kw">GSTIN</span>, phone — printed on every receipt</td></tr>
+      <tr><td>Receipt Template</td><td>Customize receipt header, footer message, and visible fields</td></tr>
+      <tr><td>Categories</td><td>Create and rename product categories</td></tr>
+      <tr><td>Receive Stock</td><td>Restock products (see Inventory section)</td></tr>
+      <tr><td>Barcodes</td><td>Print <span class="kw-blue">50×25 mm</span> barcode shelf labels for any product</td></tr>
+      <tr><td>Offers</td><td>Create automatic discount rules</td></tr>
+      <tr><td>Coupons</td><td>Create code-based discounts</td></tr>
+      <tr><td>Inventory Logs</td><td>Full audit trail of every stock movement</td></tr>
+      <tr><td>Audit Trail</td><td>Log of all admin actions across the system</td></tr>
+      <tr><td>Offline Queue</td><td>View or clear sales waiting to sync after an offline session</td></tr>
+    </tbody>
+  </table>
+
+
+  <!-- ══════════ TAX NOTE ══════════ -->
+  <h2 class="break-before"><span class="icon">⑨</span> How Taxes Work</h2>
+
+  <div class="callout">
+    All prices are <span class="kw">MRP-inclusive</span> — the tax is already baked into the selling price. Nothing extra is added on top at checkout.
+  </div>
+
+  <div class="flow-wrap" style="padding:20px;">
+    <div class="flow-title">Tax Breakdown on a Receipt</div>
+    <svg class="flow-svg" viewBox="0 0 620 80" xmlns="http://www.w3.org/2000/svg" font-family="Inter,sans-serif">
+      <rect x="0"   y="10" width="180" height="60" rx="8" fill="#b7102a"/>
+      <text x="90"  y="32" text-anchor="middle" fill="#fff" font-size="11" font-weight="800">MRP (billed price)</text>
+      <text x="90"  y="50" text-anchor="middle" fill="#fff" font-size="10">e.g. ₹118</text>
+      <text x="90"  y="64" text-anchor="middle" fill="#fff" font-size="9">(18% GST included)</text>
+
+      <text x="205" y="45" text-anchor="middle" fill="#94a3b8" font-size="18" font-weight="300">=</text>
+
+      <rect x="220" y="10" width="180" height="60" rx="8" fill="#1e40af"/>
+      <text x="310" y="32" text-anchor="middle" fill="#fff" font-size="11" font-weight="800">Base Price (ex-GST)</text>
+      <text x="310" y="50" text-anchor="middle" fill="#fff" font-size="10">₹118 ÷ 1.18 = ₹100</text>
+      <text x="310" y="64" text-anchor="middle" fill="#fff" font-size="9">back-calculated</text>
+
+      <text x="425" y="45" text-anchor="middle" fill="#94a3b8" font-size="18" font-weight="300">+</text>
+
+      <rect x="440" y="10" width="180" height="60" rx="8" fill="#065f46"/>
+      <text x="530" y="32" text-anchor="middle" fill="#fff" font-size="11" font-weight="800">GST Amount</text>
+      <text x="530" y="50" text-anchor="middle" fill="#fff" font-size="10">₹118 − ₹100 = ₹18</text>
+      <text x="530" y="64" text-anchor="middle" fill="#fff" font-size="9">shown on receipt</text>
+    </svg>
+  </div>
+
+  <p>
+    Discounts are applied <span class="kw">post-tax</span> and do <em>not</em> reduce the GST figure — the GST is always calculated on the undiscounted MRP.
+  </p>
+
+
+  <!-- ══════════ FAQ ══════════ -->
+  <h2><span class="icon">⑩</span> Frequently Asked Questions</h2>
+  <div class="faq">
+
+    <div class="faq-item">
+      <div class="faq-q">Can I use the POS without internet?</div>
+      <div class="faq-a">Yes. Bill normally — sales queue locally and sync when you come back online. Look for the <span class="kw-green">Offline</span> badge.</div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-q">Where do I update the store name / GSTIN on receipts?</div>
+      <div class="faq-a">Settings → Business Profile.</div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-q">How do I process a return or refund?</div>
+      <div class="faq-a">Open the original invoice → click <span class="kw-green">Exchange</span> → select items to return → choose <em>sellable</em> (goes back to stock) or <em>damaged</em> (written off).</div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-q">A sale is stuck in the offline queue — what do I do?</div>
+      <div class="faq-a">Confirm your internet is active. If the issue persists, go to Settings → Offline Queue to inspect or clear the stuck operation.</div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-q">How do I print barcode labels for new stock?</div>
+      <div class="faq-a">Settings → Barcodes → search product → choose label count → print. Labels are 50×25 mm, Code-128 format.</div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-q">Who can create new users / change roles?</div>
+      <div class="faq-a">User creation is done via the admin debug panel or Firebase console. Contact your system administrator.</div>
+    </div>
+
+  </div>
+
+
+  <!-- ══════════ QUICK REF ══════════ -->
+  <h2><span class="icon">★</span> Quick Reference</h2>
+
+  <table>
+    <thead><tr><th>Task</th><th>Where to go</th></tr></thead>
+    <tbody>
+      <tr><td>Start a new sale</td><td>Red <span class="kw">New Sale</span> button — sidebar bottom</td></tr>
+      <tr><td>Find an old invoice</td><td>Invoices → search bar</td></tr>
+      <tr><td>Restock products</td><td>Settings → Receive Stock</td></tr>
+      <tr><td>Add a new product</td><td>Inventory → New Product</td></tr>
+      <tr><td>Create a discount offer</td><td>Settings → Offers → New Offer</td></tr>
+      <tr><td>Generate GST report</td><td>Reports → Accounting Export</td></tr>
+      <tr><td>Print shelf labels</td><td>Settings → Barcodes</td></tr>
+      <tr><td>View stock audit trail</td><td>Settings → Inventory Logs</td></tr>
+      <tr><td>Check offline queue</td><td>Settings → Offline Queue</td></tr>
+    </tbody>
+  </table>
+
+  <!-- Footer -->
+  <div style="margin-top:56px; padding-top:16px; border-top:1px solid var(--border); text-align:center; color:#94a3b8; font-size:11px;">
+    Toy Co. Management System &nbsp;·&nbsp; Internal User Guide &nbsp;·&nbsp; April 2026
+  </div>
+
+</div>
+</body>
+</html>

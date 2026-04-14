@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 import { Avatar } from "@/components/ui/avatar";
 import { useAuth } from "@/components/auth/auth-provider";
 import { signOut } from "@/lib/auth";
@@ -121,9 +122,9 @@ export function Topbar() {
             )}
           </div>
 
-          <button className="p-1.5 text-slate-500 hover:text-slate-800 transition-colors">
+          <Link href="/guide" className="p-1.5 text-slate-500 hover:text-[#b7102a] transition-colors" title="User Guide">
             <MSIcon name="help" className="text-[22px]" />
-          </button>
+          </Link>
 
           {/* Divider */}
           <div className="w-px h-6 bg-slate-200 shrink-0" />

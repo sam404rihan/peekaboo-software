@@ -35,7 +35,7 @@ const Sidebar = () => {
 
   const bottomNavItems = [
     { href: "/settings", label: "Settings", icon: "settings" },
-    { href: "/support", label: "Support", icon: "help" },
+    { href: "/guide", label: "User Guide", icon: "help" },
   ];
 
   const isActive = (href: string) =>
